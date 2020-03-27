@@ -1,5 +1,5 @@
 [package]
-name = "dtn-rust"
+name = "dtn"
 version = "0.1.0"
 authors = ["Matt Bradbury <matt@bexars.com>"]
 edition = "2018"
@@ -7,3 +7,7 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+serde_cbor = "0.11.1"
+serde_derive = "1.0.105"
+serde = "1.0.105"
+crc = "1.8.1"
