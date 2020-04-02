@@ -4,8 +4,11 @@ use std::str::FromStr;
 use clap::Clap;
 use std::process;
 use std::io::{self, Read};
-use dtn::bundle::Bundle;
-use dtn::eid::Eid;
+use bp7::Bundle;
+use bp7::bundle::BlockControlFlags;
+use bp7::{CanonicalBlock};
+use bp7::primary::PrimaryBlock;
+use bp7::eid::EndpointID;
 use dtn::stcp;
 use std::net::TcpStream;
 use std::net::SocketAddr;
@@ -52,11 +55,15 @@ fn send_bundle(opts: &Opts) {
     let mut buffer = String::new();
     io::stdin().read_to_string(&mut buffer).expect("Error reading from stdin");
 
-    let mut bundle: Bundle = Bundle::new();
+    let primary = PrimaryBlock::default();
+    let mut canonicals: Vec<CanonicalBlock> = vec![]; 
+    canonicals.push(bp7::new_payload_block(0 as BlockControlFlags, buffer.as_bytes().to_vec()));
+
+    let mut bundle: Bundle = Bundle::new(primary, canonicals);
 
     bundle.set_payload(buffer.as_bytes().to_vec());
-    bundle.set_destination(Eid::new_uri(opts.dest.as_ref().unwrap()));
-
+    bundle.primary.destination = EndpointID::with_dtn(& opts.dest.as_ref().unwrap()).unwrap();
+    
     let ip_addr = match IpAddr::from_str(&opts.host) {
         Ok(i) => i,
         Err(e) => {
