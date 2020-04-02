@@ -3,11 +3,24 @@ name = "dtn"
 version = "0.1.0"
 authors = ["Matt Bradbury <matt@bexars.com>"]
 edition = "2018"
+default-run = "dtcat"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+#  See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 serde_cbor = "0.11.1"
 serde_derive = "1.0.105"
 serde = "1.0.105"
 crc = "1.8.1"
+clap = { git = "https://github.com/clap-rs/clap/" }
+tokio = { version = "0.2", features = ["full"] }
+futures = "0.3"
+bp7 = "0.6.1"
+
+[[bin]]
+name = "dtcat"
+path = "src/bin/dtcat.rs"
+
+[[bin]]
+name = "play"
+path = "src/bin/play.rs"
