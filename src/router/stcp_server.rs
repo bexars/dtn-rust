@@ -43,8 +43,6 @@ impl StcpServer {
                                 
                                 let (mut reader, _) = sock.split();
                                 let mut reader = BufReader::new(reader);
-                                // let mut reader = 
-//                                tokio::io::cop
                                 let array_start = reader.read_u8().await;
                                 if let Ok(c) = array_start {
                                     println!("First byte received: {}", c);                                    
@@ -64,13 +62,8 @@ impl StcpServer {
                                 }
                                 let mut buf: Vec<u8> = vec![0; size];
                                 let size = reader.read(& mut buf[0..size]).await.unwrap();
-                                println!("Trying to read {} bytes", size);
                                 let mut data: Value = serde_cbor::from_slice(&buf[..]).unwrap();
-//                                let data: Vec<Value> = serde::de::Deserialize::deserialize(&mut des).unwrap();
-                                
-                                println!("{:?}", data);
-                                // reader;
-                                
+                                                                
                                 
                             });
                             
