@@ -20,9 +20,9 @@ struct Opts {
     dest: Option<String>,
     #[clap(short = "l", long = "listen", help = "SSP to listen on ( omit dtn: from EID)")]
     listen: Option<String>,
-    #[clap(long = "host", help = "dtn node to connect to", default_value = "localhost" )]
+    #[clap(long = "host", help = "IP address or hostname of dtn node", default_value = "localhost" )]
     host: String,
-    #[clap(short = "p", long = "port", help = "port on dtn node to connect to", default_value = "4557" )]
+    #[clap(short = "p", long = "port", help = "port on dtn node to connect to", default_value = "4556" )]
     port: u16,
 }
 
@@ -62,16 +62,8 @@ fn send_bundle(opts: &Opts) {
     let mut bundle: Bundle = Bundle::new(primary, canonicals);
 
     bundle.primary.destination = EndpointID::with_dtn(& opts.dest.as_ref().unwrap()).unwrap();
-    
-    let ip_addr = match IpAddr::from_str(&opts.host) {
-        Ok(i) => i,
-        Err(e) => {
-            eprintln!("{}", e);
-            process::exit(1);
-        } 
-    };
-    let sock_addr = SocketAddr::new(ip_addr, opts.port);
-    let mut stream: TcpStream = match TcpStream::connect(sock_addr) {
+    let host_port = format!("{}:{}", &opts.host, &opts.port);
+    let mut stream: TcpStream = match TcpStream::connect(host_port) {
         Ok(x) => x,
         Err(e) => {
             eprintln!("{}", e);
