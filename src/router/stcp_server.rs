@@ -59,10 +59,16 @@ impl StcpServer {
                                     } 
                                 }
                                 let mut buf: Vec<u8> = vec![0; size];
-                                let bytes_read = reader.read(& mut buf[0..size]).await.unwrap();
-                                assert_eq!(bytes_read, size); // TODO handle long buffers
+                                let mut total = 0;
+                                while total < size {
+                                    let bytes_read = reader.read(& mut buf[total..size]).await.unwrap();
+                                    total += bytes_read;
+                                };
+                                
+                        
+                                assert_eq!(total, size); 
                                 let buf = ByteBuffer::from(buf);
-                                let _bundle = Bundle::try_from(buf);
+                                let bundle = Bundle::try_from(buf).unwrap();
                                 // TODO send to bundle processing
                             });
                             
