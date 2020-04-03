@@ -1,14 +1,14 @@
 use tokio::net::TcpListener;
 use tokio::prelude::*;
 use futures::stream::StreamExt;
-use super::eid::Eid;
+use bp7::eid::EndpointID;
 
 pub mod stcp_server;
 
 pub struct Configuration {
     pub stcp_port: u16,
     pub stcp_enable: bool,
-    pub local_eid: Eid,
+    pub local_eid: EndpointID,
 }
 
 

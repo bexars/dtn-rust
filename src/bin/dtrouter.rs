@@ -1,6 +1,6 @@
 use dtn::router;
-use dtn::eid;
 use clap::Clap;
+use bp7::eid::EndpointID;
 
 #[derive(Debug)]
 #[derive(Clap)]
@@ -17,7 +17,7 @@ struct Opts {
 pub fn main() {
     let opts: Opts = Opts::parse();
     println!("{:?}", opts);
-    let local_eid = eid::Eid::new_uri(&opts.local_eid);
+    let local_eid = EndpointID::with_dtn(&opts.local_eid).unwrap();
 
 
     let conf = router::Configuration {
