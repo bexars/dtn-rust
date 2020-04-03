@@ -52,16 +52,15 @@ fn main() {
 }
 
 fn send_bundle(opts: &Opts) {
-    let mut buffer = String::new();
-    io::stdin().read_to_string(&mut buffer).expect("Error reading from stdin");
+    let mut buffer: Vec::<u8> = Vec::new();
+    io::stdin().read_to_end(&mut buffer).expect("Error reading from stdin");
 
     let primary = PrimaryBlock::default();
     let mut canonicals: Vec<CanonicalBlock> = vec![]; 
-    canonicals.push(bp7::new_payload_block(0 as BlockControlFlags, buffer.as_bytes().to_vec()));
+    canonicals.push(bp7::new_payload_block(0 as BlockControlFlags, buffer));
 
     let mut bundle: Bundle = Bundle::new(primary, canonicals);
 
-    bundle.set_payload(buffer.as_bytes().to_vec());
     bundle.primary.destination = EndpointID::with_dtn(& opts.dest.as_ref().unwrap()).unwrap();
     
     let ip_addr = match IpAddr::from_str(&opts.host) {
