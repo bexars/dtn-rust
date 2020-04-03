@@ -2,11 +2,9 @@ use tokio::net::TcpListener;
 use tokio::io::BufReader;
 use tokio::prelude::*;
 use futures::stream::StreamExt;
-use serde_cbor::Deserializer;
-use serde_cbor::from_reader;
-use serde_cbor::Value;
-use std::net::SocketAddr;
-use tokio::net::UdpSocket;
+use bp7::Bundle;
+use bp7::ByteBuffer;
+use std::convert::TryFrom;
 
 pub struct StcpServer {
     port: u16,
@@ -41,7 +39,7 @@ impl StcpServer {
                                 let remote_addr = sock.peer_addr().expect("Unable to get peer address");
                                 println!("Incoming stcp from: {}", remote_addr);
                                 
-                                let (mut reader, _) = sock.split();
+                                let (reader, _) = sock.split();
                                 let mut reader = BufReader::new(reader);
                                 let array_start = reader.read_u8().await;
                                 if let Ok(c) = array_start {
@@ -61,10 +59,11 @@ impl StcpServer {
                                     } 
                                 }
                                 let mut buf: Vec<u8> = vec![0; size];
-                                let size = reader.read(& mut buf[0..size]).await.unwrap();
-                                let mut data: Value = serde_cbor::from_slice(&buf[..]).unwrap();
-                                                                
-                                
+                                let bytes_read = reader.read(& mut buf[0..size]).await.unwrap();
+                                assert_eq!(bytes_read, size); // TODO handle long buffers
+                                let buf = ByteBuffer::from(buf);
+                                let _bundle = Bundle::try_from(buf);
+                                // TODO send to bundle processing
                             });
                             
 
