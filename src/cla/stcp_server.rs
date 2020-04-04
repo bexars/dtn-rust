@@ -5,33 +5,51 @@ use futures::stream::StreamExt;
 use bp7::Bundle;
 use bp7::ByteBuffer;
 use std::convert::TryFrom;
+use crate::cla::cla_handle::ClaHandle;
+use crate::cla::{ClaType, ClaRW};
+// use crate::router::processor::Processor;
+use std::sync::{Arc, Mutex};
+use std::sync::mpsc::Sender;
+use crate::cla::cla_handle::HandleID;
+
 
 pub struct StcpServer {
     port: u16,
+    cla_handle: Arc<Mutex<ClaHandle>>,
 }
 
+
+
 impl StcpServer {
-    pub fn new(port: u16) -> StcpServer {
-        let s = StcpServer {
+
+    pub const CLA_TYPE: ClaType = ClaType::StcpListener;
+    pub const CLA_RW: ClaRW = ClaRW::R;
+
+    pub fn new(cla_handle: Arc<Mutex<ClaHandle>>, port: u16) -> StcpServer {
+        StcpServer {
             port,
-        };
-        s
+            cla_handle,
+            
+        }
+        
     }
 
-    pub async fn start(&self) {
+    pub async fn start(&self, tx: Sender<(HandleID, Bundle)>) {
         
 
         // start listening!
         let addr = format!(":::{}", self.port);
         println!("Starting STCP listener: {}", addr);
-
         let addr2 = addr.clone();
         let mut listener = TcpListener::bind(addr).await.unwrap();
-
+        let handle_id = self.cla_handle.lock().unwrap().id;
+        let tx = tx.clone();
         let server = {
             async move {
                 let mut incoming = listener.incoming();
                 while let Some(conn) = incoming.next().await {
+                    // let cla_handle = self.cla_handle.clone();
+                    let tx = tx.clone();
                     match conn {
                         Err(e) => eprintln!("stcp accept failed: {:?}", e),
                         Ok(mut sock) => {
@@ -69,7 +87,9 @@ impl StcpServer {
                                 assert_eq!(total, size); 
                                 let buf = ByteBuffer::from(buf);
                                 let bundle = Bundle::try_from(buf).unwrap();
-                                // TODO send to bundle processing
+                                println!("STCP received bundle, sending to processing");
+                                tx.send((handle_id, bundle)).unwrap();
+
                             });
                             
 
@@ -79,8 +99,8 @@ impl StcpServer {
             }
         };
 
+        tokio::spawn(server);
         println!("stcp service running on {}", addr2);
-        server.await;
 
     }
 }
