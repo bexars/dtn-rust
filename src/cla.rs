@@ -11,4 +11,5 @@ pub enum ClaRW {
 pub enum ClaType {
     StcpListener,
     StcpSender,
+    LoopBack,
 }
