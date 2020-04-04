@@ -48,10 +48,9 @@ impl Processor {
 
         let process_loop = async move {
             loop {
-                println!("Bundle loop waiting...");
                 let (id, bun) = rx.recv().unwrap();
 
-                println!("Received bundle on: {}", &cla_manager.adapters.read().unwrap().get(&id).unwrap().lock().unwrap().name);
+                // println!("Received bundle on: {}", &cla_manager.adapters.read().unwrap().get(&id).unwrap().lock().unwrap().name);
                 // TODO Update stats on Cla Handle
                 // &self.process_bundle(bun, id);
             }
