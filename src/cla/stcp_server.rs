@@ -34,18 +34,18 @@ impl StcpServer {
         
     }
 
-    pub async fn start(&self, tx: Sender<(HandleID, Bundle)>) {
+    pub fn start(&self, tx: Sender<(HandleID, Bundle)>) {
         
 
         // start listening!
         let addr = format!(":::{}", self.port);
-        println!("Starting STCP listener: {}", addr);
+//        println!("Starting STCP listener: {}", addr);
         let addr2 = addr.clone();
-        let mut listener = TcpListener::bind(addr).await.unwrap();
         let handle_id = self.cla_handle.lock().unwrap().id;
         let tx = tx.clone();
         let server = {
             async move {
+                let mut listener = TcpListener::bind(addr).await.unwrap();
                 let mut incoming = listener.incoming();
                 while let Some(conn) = incoming.next().await {
                     // let cla_handle = self.cla_handle.clone();

@@ -42,22 +42,22 @@ impl Processor {
 
         println!("Building bundle loop");
         let cla_manager = self.cla_manager.clone();
+        let (tx, rx) : (Sender<(HandleID,Bundle)>, Receiver< (HandleID, Bundle) >) = channel();
 
-        let bun_loop = async move {
-            let (tx, rx) : (Sender<(HandleID,Bundle)>, Receiver< (HandleID, Bundle) >) = channel();
+        cla_manager.start(tx);
 
-            cla_manager.start(tx).await;
+        let process_loop = async move {
             loop {
                 println!("Bundle loop waiting...");
                 let (id, bun) = rx.recv().unwrap();
 
-                println!("Received bundle on: {}", &cla_manager.adapters.lock().unwrap().get(&id).unwrap().lock().unwrap().name);
+                println!("Received bundle on: {}", &cla_manager.adapters.read().unwrap().get(&id).unwrap().lock().unwrap().name);
                 // TODO Update stats on Cla Handle
                 // &self.process_bundle(bun, id);
             }
         };
-
-        tokio::spawn(bun_loop);
+        process_loop.await;
+//        tokio::spawn(process_loop);
         println!("Started bundle processing loop");
 
 

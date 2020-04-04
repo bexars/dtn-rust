@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 use crate::router::processor::Processor;
 use crate::cla::cla_handle::*;
 use crate::router::Configuration;
@@ -12,7 +12,7 @@ use tokio::prelude::*;
 
 
 pub struct ClaManager {
-    pub adapters: Arc<Mutex<HashMap<HandleID, Arc<Mutex<ClaHandle>>>>>,
+    pub adapters: Arc<RwLock<HashMap<HandleID, Arc<Mutex<ClaHandle>>>>>,
     conf: Arc<Configuration>,
 }
 
@@ -20,13 +20,13 @@ impl ClaManager {
     pub fn new(conf: Arc<Configuration>) -> ClaManager {
         Self {
             adapters: Arc::new(
-                Mutex::new(HashMap::<HandleID, Arc<Mutex<ClaHandle>>>::new(),
+                RwLock::new(HashMap::<HandleID, Arc<Mutex<ClaHandle>>>::new(),
             )),
             conf,
         }
     }
 
-    pub async fn start(&self, tx: Sender<(HandleID, Bundle)>) {
+    pub fn start(&self, tx: Sender<(HandleID, Bundle)>) {
         let mut cur_id: HandleID = 0;  
         let mut inc_id =  || {
             cur_id += 1;
@@ -45,7 +45,7 @@ impl ClaManager {
                     StcpServer::CLA_RW,
                     StcpServer::CLA_TYPE );
                 let handle = Arc::new(Mutex::new(handle));
-                self.adapters.lock().unwrap().insert(id, handle.clone());
+                self.adapters.write().unwrap().insert(id, handle.clone());
                 Some(StcpServer::new(handle, self.conf.stcp_port))
             }
         };
