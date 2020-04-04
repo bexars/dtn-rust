@@ -7,7 +7,7 @@ use super::ClaType;
 
 pub struct ClaHandle {
         pub rw: ClaRW,
-        pub id: HandleID,
+        pub id: HandleId,
         pub in_bytes: usize,
         pub out_bytes: usize,
         pub in_bundles: usize,
@@ -17,10 +17,10 @@ pub struct ClaHandle {
         pub cla_type: ClaType,
 }
 
-pub type HandleID = usize;
+pub type HandleId = usize;
 
 impl ClaHandle {
-    pub fn new( id: HandleID, name: String, rw: ClaRW, cla_type: ClaType) -> ClaHandle {
+    pub fn new( id: HandleId, name: String, rw: ClaRW, cla_type: ClaType) -> ClaHandle {
         Self {
             id,
             name,

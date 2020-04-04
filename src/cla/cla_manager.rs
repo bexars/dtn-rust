@@ -12,7 +12,7 @@ use tokio::prelude::*;
 
 
 pub struct ClaManager {
-    pub adapters: Arc<RwLock<HashMap<HandleID, Arc<Mutex<ClaHandle>>>>>,
+    pub adapters: Arc<RwLock<HashMap<HandleId, Arc<Mutex<ClaHandle>>>>>,
     conf: Arc<Configuration>,
 }
 
@@ -20,14 +20,14 @@ impl ClaManager {
     pub fn new(conf: Arc<Configuration>) -> ClaManager {
         Self {
             adapters: Arc::new(
-                RwLock::new(HashMap::<HandleID, Arc<Mutex<ClaHandle>>>::new(),
+                RwLock::new(HashMap::<HandleId, Arc<Mutex<ClaHandle>>>::new(),
             )),
             conf,
         }
     }
 
-    pub fn start(&self, tx: Sender<(HandleID, Bundle)>) {
-        let mut cur_id: HandleID = 0;  
+    pub fn start(&self, tx: Sender<(HandleId, Bundle)>) {
+        let mut cur_id: HandleId = 0;  
         let mut inc_id =  || {
             cur_id += 1;
             cur_id - 1

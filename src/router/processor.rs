@@ -1,6 +1,6 @@
 use super::super::router;
 use bp7::Bundle;
-use crate::cla::cla_handle::{ClaHandle, HandleID};
+use crate::cla::cla_handle::{ClaHandle, HandleId};
 use crate::cla::cla_manager::ClaManager;
 use std::sync::Arc;
 use std::sync::mpsc::{channel, Sender, Receiver};
@@ -21,7 +21,7 @@ impl Processor {
         }
     }
 
-    pub async fn process_bundle(&self, bundle: Bundle, handle_id: HandleID) {
+    pub async fn process_bundle(&self, bundle: Bundle, handle_id: HandleId) {
         // Process flags
 
         // update CLA stats
@@ -42,7 +42,7 @@ impl Processor {
 
         println!("Building bundle loop");
         let cla_manager = self.cla_manager.clone();
-        let (tx, rx) : (Sender<(HandleID,Bundle)>, Receiver< (HandleID, Bundle) >) = channel();
+        let (tx, rx) : (Sender<(HandleId,Bundle)>, Receiver< (HandleId, Bundle) >) = channel();
 
         cla_manager.start(tx);
 
