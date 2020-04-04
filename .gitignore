@@ -1,3 +1,4 @@
 /target
 /out
+src/old
 src/bin/play.rs
