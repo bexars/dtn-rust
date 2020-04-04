@@ -2,3 +2,6 @@
 /out
 src/old
 src/bin/play.rs
+blah.conf
+config.toml
+test.conf

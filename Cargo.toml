@@ -13,10 +13,15 @@ serde_derive = "1.0.105"
 serde = "1.0.105"
 crc = "1.8.1"
 clap = { git = "https://github.com/clap-rs/clap/" }
-tokio = { version = "0.2", features = ["full"] }
+tokio = { version = "0.2.16", features = ["full"] }
 futures = "0.3"
 bp7 = "0.6.1"
 test-case = "1.0.0"
+# fondant = "0.1.1"
+fondant = { path = "../../fondant/fondant" }
+shrust = "0.0.7"
+# tokio-threadpool = "0.1.18"
+
 
 [[bin]]
 name = "dtcat"
