@@ -1,3 +1,4 @@
+use log;
 use std::collections::HashMap;
 use crate::router::RouterModule;
 use tokio::sync::mpsc::*;
@@ -56,7 +57,7 @@ impl Bus {
                         ModuleMsgEnum::MsgBus(mb) => {
                             match mb {
                                 BusMessage::SetTx(tx, route_mod) => {
-                                    println!("Received SetTx from: {:?}", route_mod);
+                                    debug!("Received SetTx from: {:?}", route_mod);
                                     senders.write().await.insert(route_mod, tx);
                                 },
                                 BusMessage::GetTx(route_mod, mut requester) => {

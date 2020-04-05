@@ -45,7 +45,8 @@ impl ConfManager {
         }
     }
 
-    pub fn start(&self, bus_tx: Sender<ModuleMsgEnum>) {
+    pub fn start(&mut self, bus_tx: Sender<ModuleMsgEnum>) {
+        self.bus_tx = Some(bus_tx.clone());
         let rx = self.conf_rx.clone();
         let tx = self.conf_tx.clone();
         let mut bus_tx = bus_tx.clone();
@@ -58,11 +59,10 @@ impl ConfManager {
         
         tokio::spawn( {
             async move {   
-                bus_tx.send(ModuleMsgEnum::MsgBus(
+                let res = bus_tx.send(ModuleMsgEnum::MsgBus(
                                 BusMessage::SetTx(
                                     tx.clone(), RouterModule::Configuration))).await;
             }});
-        //tokio::spawn(s);
 
     }    
 }

@@ -10,6 +10,7 @@ use serde::{Serialize, Deserialize};
 use crate::cli;
 use crate::bus;
 use crate::conf;
+use crate::cla::cla_manager::ClaManager;
 use strum::{IntoEnumIterator};
 use strum_macros::*;
 // use std::path::PathBuf;
@@ -45,9 +46,14 @@ pub async fn start(conf_file: String) {
     let (mut msg_bus, bus_tx, bus_rx) = bus::Bus::new();
     msg_bus.start(bus_rx);
 
-    let conf_mgr = conf::ConfManager::new(conf_file);
-    conf_mgr.start(bus_tx);
+    let mut conf_mgr = conf::ConfManager::new(conf_file);
+    conf_mgr.start(bus_tx.clone());
 
+    let mut proc_mgr = processor::Processor::new();
+    proc_mgr.start(bus_tx.clone());
+
+    let mut cla_mgr = ClaManager::new();
+    cla_mgr.start(bus_tx.clone());
 
 //    let mut processor = Processor::new();        
 //    task::spawn_blocking(|| {cli::start()});
