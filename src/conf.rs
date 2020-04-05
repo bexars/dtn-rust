@@ -1,3 +1,4 @@
+use log;
 use fondant::Configure;
 use serde::{Serialize, Deserialize};
 use bp7::EndpointID;
