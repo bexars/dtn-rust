@@ -23,7 +23,8 @@ shrust = "0.0.7"
 # tokio-threadpool = "0.1.18"
 strum = "0.18.0"
 strum_macros = "0.18.0"
-
+log = "0.4.8"
+env_logger = "0.7.1"
 
 
 [[bin]]

@@ -1,6 +1,8 @@
 use dtn::router;
 use clap::Clap;
 use bp7::eid::EndpointID;
+use log::{debug};
+
 
 #[derive(Debug)]
 #[derive(Clap)]
@@ -17,8 +19,9 @@ struct Opts {
 }
 
 pub fn main() {
+    env_logger::init();
     let opts: Opts = Opts::parse();
-    println!("{:?}", opts);
+    debug!("{:?}", opts);
 //    let local_eid = EndpointID::with_dtn(&opts.local_eid).unwrap();
 
 //    let mut conf = router::Configuration::load().unwrap();
