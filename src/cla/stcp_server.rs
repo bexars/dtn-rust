@@ -8,7 +8,8 @@ use std::convert::TryFrom;
 use crate::cla::cla_handle::ClaHandle;
 use crate::cla::{ClaType, ClaRW};
 // use crate::router::processor::Processor;
-use std::sync::{Arc, Mutex};
+use tokio::sync::{Mutex, RwLock};
+use std::sync::{Arc};
 use std::sync::mpsc::Sender;
 use crate::cla::cla_handle::HandleId;
 
@@ -34,14 +35,14 @@ impl StcpServer {
         
     }
 
-    pub fn start(&self, tx: Sender<(HandleId, Bundle)>) {
+    pub async fn start(&self, tx: Sender<(HandleId, Bundle)>) {
         
 
         // start listening!
         let addr = format!(":::{}", self.port);
 //        println!("Starting STCP listener: {}", addr);
         let addr2 = addr.clone();
-        let handle_id = self.cla_handle.lock().unwrap().id;
+        let handle_id = self.cla_handle.lock().await.id;
         let tx = tx.clone();
         let server = {
             async move {

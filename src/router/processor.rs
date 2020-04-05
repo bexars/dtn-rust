@@ -14,12 +14,12 @@ pub struct Processor {
 }
 
 impl Processor {
-    pub fn new(conf: Arc<router::Configuration>) -> Self {
-        Self {
-            node: conf.local_eid.node_id().unwrap(),
-            cla_manager: Arc::new(ClaManager::new(conf)),
-        }
-    }
+    // pub fn new() -> Self {
+    //     Self {
+    //         node: conf.local_eid.node_id().unwrap(),
+    //         cla_manager: Arc::new(ClaManager::new(conf)),
+    //     }
+    // }
 
     pub async fn process_bundle(&self, bundle: Bundle, handle_id: HandleId) {
         // Process flags

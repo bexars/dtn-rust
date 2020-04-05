@@ -1,7 +1,8 @@
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc};
+use tokio::sync::{Mutex, RwLock};
 use crate::router::processor::Processor;
 use crate::cla::cla_handle::*;
-use crate::router::Configuration;
+use crate::conf::Configuration;
 use super::stcp_server::StcpServer;
 use std::collections::HashMap;
 use std::sync::mpsc::{channel, Sender, Receiver};
@@ -13,20 +14,20 @@ use tokio::prelude::*;
 
 pub struct ClaManager {
     pub adapters: Arc<RwLock<HashMap<HandleId, Arc<Mutex<ClaHandle>>>>>,
-    conf: Arc<Configuration>,
+    conf: Arc<RwLock<Configuration>>,
 }
 
 impl ClaManager {
-    pub fn new(conf: Arc<Configuration>) -> ClaManager {
-        Self {
-            adapters: Arc::new(
-                RwLock::new(HashMap::<HandleId, Arc<Mutex<ClaHandle>>>::new(),
-            )),
-            conf,
-        }
-    }
+    // pub fn new(conf: Arc<Configuration>) -> ClaManager {
+    //     Self {
+    //         adapters: Arc::new(
+    //             RwLock::new(HashMap::<HandleId, Arc<Mutex<ClaHandle>>>::new(),
+    //         )),
+    //         conf,
+    //     }
+    // }
 
-    pub fn start(&self, tx: Sender<(HandleId, Bundle)>) {
+    pub async fn start(&self, tx: Sender<(HandleId, Bundle)>) {
         let mut cur_id: HandleId = 0;  
         let mut inc_id =  || {
             cur_id += 1;
@@ -35,7 +36,7 @@ impl ClaManager {
 
         let tx = tx.clone();
 
-        let stcp_server = match self.conf.stcp_enable {
+        let stcp_server = match self.conf.read().await.stcp_enable {
             false => None,
             true => {
                 let id = inc_id();
@@ -45,8 +46,8 @@ impl ClaManager {
                     StcpServer::CLA_RW,
                     StcpServer::CLA_TYPE );
                 let handle = Arc::new(Mutex::new(handle));
-                self.adapters.write().unwrap().insert(id, handle.clone());
-                Some(StcpServer::new(handle, self.conf.stcp_port))
+                self.adapters.write().await.insert(id, handle.clone());
+                Some(StcpServer::new(handle, self.conf.read().await.stcp_port))
             }
         };
         

@@ -21,6 +21,9 @@ test-case = "1.0.0"
 fondant = { path = "../../fondant/fondant" }
 shrust = "0.0.7"
 # tokio-threadpool = "0.1.18"
+strum = "0.18.0"
+strum_macros = "0.18.0"
+
 
 
 [[bin]]

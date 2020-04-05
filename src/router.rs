@@ -8,47 +8,49 @@ use std::sync::Arc;
 use fondant::Configure;
 use serde::{Serialize, Deserialize};
 use crate::cli;
+use crate::bus;
+use crate::conf;
+use strum::{IntoEnumIterator};
+use strum_macros::*;
 // use std::path::PathBuf;
 
 pub mod processor;
 
-#[derive(Configure, Serialize, Deserialize, Default)]
-#[config_file = "config.toml"]
-pub struct Configuration {
-    pub stcp_port: u16,
-    pub stcp_enable: bool,
-    pub local_eid: EndpointID,
-}
+
 
 pub struct CmdLineOpts {
     pub config_file: String,
+}
+
+#[derive(EnumIter, Debug, PartialEq, Eq, Hash)]
+pub enum RouterModule {
+    Processing,      // Actually reads the Bundle and decides what to do with it
+    ClaManager,      // Manages the various CLA, stats, up/down
+    CLI,             // User interface
+    Logging,         // Catches and distributes all logging
+    Storage,         // Bundles being written to disk
+    AppAgent,        // Registering clients, send/receive bundles
+    Routing,         // Updates and lookups to the forwarding table
+    Configuration,   // Reads, stores, updates the config.  Let's other modules know
+    Bus,             // The messaging backbone
 }
 
 
 #[tokio::main]
 pub async fn start(conf_file: String) {
 
-    let conf_file = PathBuf::from(conf_file);
-    let conf = Configuration::load_file(&conf_file).unwrap();
-
-
-    
-
-
     //conf.store_file(&conf_file).unwrap();
     //println!("{}", toml::to_string_pretty(&conf).unwrap());
 
-    let mut processor = Processor::new(Arc::new(conf));        
-    task::spawn_blocking(|| {cli::start()});
-    processor.start().await;
+    let (mut msg_bus, bus_tx, bus_rx) = bus::Bus::new();
+    msg_bus.start(bus_rx);
+
+    let conf_mgr = conf::ConfManager::new(conf_file);
+    conf_mgr.start(bus_tx);
 
 
-    // let stcp_server = match conf.stcp_enable {
-    //     false => None,
-    //     true => Some(stcp_server::StcpServer::new(conf.stcp_port)),
-    // };   
-
-
-    // if let Some(server) = stcp_server { server.start().await; };
-
+//    let mut processor = Processor::new();        
+//    task::spawn_blocking(|| {cli::start()});
+//    processor.start().await;
+    cli::start();
 }
