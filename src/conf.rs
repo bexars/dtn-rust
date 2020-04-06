@@ -1,4 +1,4 @@
-use log;
+use log::*;
 use fondant::Configure;
 use serde::{Serialize, Deserialize};
 use bp7::EndpointID;
@@ -46,24 +46,33 @@ impl ConfManager {
         }
     }
 
-    pub fn start(&mut self, bus_tx: Sender<ModuleMsgEnum>) {
+    pub async fn start(&mut self, bus_tx: Sender<ModuleMsgEnum>) {
         self.bus_tx = Some(bus_tx.clone());
         let rx = self.conf_rx.clone();
         let tx = self.conf_tx.clone();
         let mut bus_tx = bus_tx.clone();
-        tokio::spawn(async move {
-            while let Some(msg) = rx.lock().await.recv().await {
-                // Listen for config updates and requests
-            }
-    
-        });
-        
+
         tokio::spawn( {
             async move {   
-                let res = bus_tx.send(ModuleMsgEnum::MsgBus(
+                let _res = bus_tx.send(ModuleMsgEnum::MsgBus(  //TODO use the Result
                                 BusMessage::SetTx(
                                     tx.clone(), RouterModule::Configuration))).await;
             }});
+
+
+        while let Some(msg) = rx.lock().await.recv().await {
+            match msg {
+                ModuleMsgEnum::ShutdownNow => {
+                    debug!("Received Shutdown");
+                    break;
+                },
+                _ => { trace!("Received unknown msg: {:?}", msg); }
+            }
+    
+            // Listen for config updates and requests
+        }
+    
+        
 
     }    
 }

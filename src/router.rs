@@ -1,3 +1,4 @@
+use log::*;
 use tokio::net::TcpListener;
 use tokio::prelude::*;
 use futures::stream::StreamExt;
@@ -44,19 +45,34 @@ pub async fn start(conf_file: String) {
     //println!("{}", toml::to_string_pretty(&conf).unwrap());
 
     let (mut msg_bus, bus_tx, bus_rx) = bus::Bus::new();
-    msg_bus.start(bus_rx);
+    let han_bus = msg_bus.start(bus_rx);
 
     let mut conf_mgr = conf::ConfManager::new(conf_file);
-    conf_mgr.start(bus_tx.clone());
+    let han_conf = conf_mgr.start(bus_tx.clone());
+
+    // Storage here
 
     let mut proc_mgr = processor::Processor::new();
-    proc_mgr.start(bus_tx.clone());
+    let han_proc = proc_mgr.start(bus_tx.clone());
+    
 
+    
     let mut cla_mgr = ClaManager::new();
-    cla_mgr.start(bus_tx.clone());
+    let han_clam = cla_mgr.start(bus_tx.clone());
 
-//    let mut processor = Processor::new();        
+    let mut cli_mgr = cli::CliManager::new();
+    let han_clim = cli_mgr.start(bus_tx.clone());
+
+    //    let mut processor = Processor::new();        
 //    task::spawn_blocking(|| {cli::start()});
 //    processor.start().await;
-    cli::start();
+    // cli::start_shell();
+    info!("Waiting for threads");
+    tokio::join!(han_clam, han_bus, han_conf, han_proc);
+    // tokio::join!(han_bus, han_conf, han_proc, han_clam);   
+    info!("All threads shut down.");
+    tokio::join!(han_clim);    
+    std::process::exit(0);
+    
+
 }

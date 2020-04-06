@@ -1,3 +1,5 @@
+use log::*;
+
 use crate::router::processor::Processor;
 use crate::cla::cla_handle::*;
 use crate::conf::Configuration;
@@ -36,22 +38,13 @@ impl ClaManager {
         }
     }
 
-    pub fn start(&mut self, bus_tx: Sender<ModuleMsgEnum>) {
+    pub async fn start(&mut self, bus_tx: Sender<ModuleMsgEnum>) {
         self.bus_tx = Some(bus_tx.clone());
         let rx = self.clam_rx.clone();
         let tx = self.clam_tx.clone();
-
-        tokio::spawn(async move {
-            while let Some(msg) = rx.lock().await.recv().await {
-                // Listen for updates from CLAs
-                tokio::spawn(async move {
-                    // Do something with the msg
-                });
-            } // end While
-        });  // end spawn
-
         let mut bus_tx = bus_tx.clone();
  
+        
         tokio::spawn( {
             async move {   
                 let res = bus_tx.send(ModuleMsgEnum::MsgBus(
@@ -59,6 +52,25 @@ impl ClaManager {
                                     tx.clone(), RouterModule::ClaManager))).await;
             }});
 
+        //tokio::spawn(async move {
+        while let Some(msg) = rx.lock().await.recv().await {
+            // Listen for updates from CLAs
+            debug!("Received msg: {:?}", msg);
+            match msg {
+                ModuleMsgEnum::ShutdownNow => { 
+                    debug!("Received Halt");
+                    break; },
+                _ => {},
+            }
+
+
+            tokio::spawn(async move {
+                // Do something with the msg
+            });
+        } // end While
+        // });  // end spawn
+
+     
 
     }
 

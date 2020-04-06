@@ -16,7 +16,7 @@ use crate::cla::cla_handle::HandleId;
 
 pub struct StcpServer {
     port: u16,
-    cla_handle: Arc<Mutex<ClaHandle>>,
+    cla_handle: Arc<RwLock<ClaHandle>>,
 }
 
 
@@ -26,23 +26,26 @@ impl StcpServer {
     pub const CLA_TYPE: ClaType = ClaType::StcpListener;
     pub const CLA_RW: ClaRW = ClaRW::R;
 
-    pub fn new(cla_handle: Arc<Mutex<ClaHandle>>, port: u16) -> StcpServer {
+    pub fn new(cla_handle: Arc<RwLock<ClaHandle>>, port: u16) -> StcpServer {
         StcpServer {
             port,
-            cla_handle,
-            
+            cla_handle,            
         }
         
     }
 
-    pub async fn start(&self, tx: Sender<(HandleId, Bundle)>) {
+
+
+
+
+    pub async fn start_old(&self, tx: Sender<(HandleId, Bundle)>) {
         
 
         // start listening!
         let addr = format!(":::{}", self.port);
 //        println!("Starting STCP listener: {}", addr);
         let addr2 = addr.clone();
-        let handle_id = self.cla_handle.lock().await.id;
+        let handle_id = self.cla_handle.read().await.id;
         let tx = tx.clone();
         let server = {
             async move {

@@ -1,3 +1,4 @@
+use log::*;
 use super::super::router;
 use bp7::Bundle;
 use crate::cla::cla_handle::{ClaHandle, HandleId};
@@ -29,28 +30,33 @@ impl Processor {
         }
     }
 
-    pub fn start(&mut self, bus_tx: Sender<ModuleMsgEnum>) {
+    pub async fn start(&mut self, bus_tx: Sender<ModuleMsgEnum>) {
         self.bus_tx = Some(bus_tx.clone());
         let rx = self.rx.clone();
         let tx = self.tx.clone();
 
-        tokio::spawn(async move {
-            while let Some(msg) = rx.lock().await.recv().await {
-                // Listen for updates from CLAs
-                tokio::spawn(async move {
-                    // Do something with the msg
-                });
-            } // end While
-        });  // end spawn
-
         let mut bus_tx = bus_tx.clone();
- 
         tokio::spawn( {
             async move {   
                 let res = bus_tx.send(ModuleMsgEnum::MsgBus(
                                 BusMessage::SetTx(
                                     tx.clone(), RouterModule::Processing))).await;
             }});
+
+
+        while let Some(msg) = rx.lock().await.recv().await {
+                // Listen for updates from CLAs
+                match msg {
+                    ModuleMsgEnum::ShutdownNow => { break; },
+                    _ => { debug!("Unknown msg: {:?}", msg); },
+                };
+            
+                // tokio::spawn(async move {
+                //     // Do something with the msg
+                // });
+        }; // end While
+
+ 
 
 
     }

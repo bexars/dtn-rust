@@ -1,4 +1,4 @@
-use log;
+use log::*;
 use std::collections::HashMap;
 use crate::router::RouterModule;
 use tokio::sync::mpsc::*;
@@ -16,7 +16,14 @@ pub enum ModuleMsgEnum {
     MsgAppAgent,     
     MsgRouting,      
     MsgConfiguration,
-    MsgBus(BusMessage),       
+    MsgBus(BusMessage),
+    ShutdownNow,      
+}
+
+enum RunState {
+    Running,
+    Stopping,
+    Shutdown,
 }
 
 #[derive(Debug)]
@@ -30,6 +37,7 @@ pub struct Bus {
     senders:   Arc<RwLock<HashMap<RouterModule, Sender<ModuleMsgEnum>>>>,
 //    rx: Arc<RwLock<Receiver<ModuleMsgEnum>>>,
 //    receivers: HashMap<RouterModule, Receiver<ModuleMsgEnum>>,
+    running: Arc<RwLock<bool>>,
 }
 
 impl Bus {
@@ -40,48 +48,65 @@ impl Bus {
         senders.insert(RouterModule::Bus, send.clone());
         let bus = Bus {
             senders: Arc::new(RwLock::new(senders)),
+            running: Arc::new(RwLock::new(false)),
         };
         (bus, send, recv)
     }
 
-    pub fn start(&mut self, rx: Receiver<ModuleMsgEnum>) {
+    pub async fn start(&mut self, rx: Receiver<ModuleMsgEnum>) {
+        let running = self.running.clone();
+        *running.write().await = true;
         let mut rx = rx;
         let senders = self.senders.clone();
 //        let tx = senders.read().await.get(&RouterModule::Bus).clone();
 
-        let service = { async move {
-            while let Some(msg) = rx.recv().await {
-                let senders = senders.clone();
-                tokio::spawn(async move {
-                    match msg {
-                        ModuleMsgEnum::MsgBus(mb) => {
-                            match mb {
-                                BusMessage::SetTx(tx, route_mod) => {
-                                    debug!("Received SetTx from: {:?}", route_mod);
-                                    senders.write().await.insert(route_mod, tx);
-                                },
-                                BusMessage::GetTx(route_mod, mut requester) => {
-                                    if let Some(payload) = senders.read().await.get(&route_mod) {
-                                        if let Err(_) = requester.send(ModuleMsgEnum::MsgBus(BusMessage::PayloadTx(route_mod, payload.clone()))).await {
-                                            // Log the send error, do debug stuff 
-                                        } 
-                                    };
-                                },
-                                _ => {
-                                    eprintln!("Unexpected BusMessage: {:?}", mb);
-                                },
+        // let service = { async move {
+        while *running.read().await {
+            let fut_msg = rx.recv().await;
+            if !*self.running.read().await { break; };
+            let msg = if let Some(msg) = fut_msg { msg } 
+            else { break; };
+            let senders = senders.clone();
+            let running = running.clone();
+            tokio::spawn(async move {
+                match msg {
+                    ModuleMsgEnum::MsgBus(mb) => {
+                        match mb {
+                            BusMessage::SetTx(tx, route_mod) => {
+                                debug!("Received SetTx from: {:?}", route_mod);
+                                senders.write().await.insert(route_mod, tx);
+                            },
+                            BusMessage::GetTx(route_mod, mut requester) => {
+                                if let Some(payload) = senders.read().await.get(&route_mod) {
+                                    if let Err(_) = requester.send(ModuleMsgEnum::MsgBus(BusMessage::PayloadTx(route_mod, payload.clone()))).await {
+                                        // Log the send error, do debug stuff 
+                                    } 
+                                };
+                            },
+                            _ => {
+                                eprintln!("Unexpected BusMessage: {:?}", mb);
+                            },
+                        }
+
+                    }, // end MsgBus match
+                    ModuleMsgEnum::ShutdownNow => {
+                        *running.write().await = false;
+                        debug!("Received Shutdown.  Rebroadcasting");
+                        let senders = senders.clone();
+                        
+                        for (k,v) in senders.write().await.iter_mut() {
+                            if *k != RouterModule::Bus {
                             }
+                            &v.send(ModuleMsgEnum::ShutdownNow).await;
+                            
+                        };
+                    },
+                    _ => {}
+                }
+            });         
 
-                        },
-                        _ => {}
-                    }
-                });         
-
-            }
-        }};          
-            
-        tokio::spawn(service);
-        
+        }
+        // tokio::spawn(service);        
     }
 
 }
