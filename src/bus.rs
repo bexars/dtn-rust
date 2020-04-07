@@ -2,11 +2,12 @@ use log::*;
 use std::collections::HashMap;
 use crate::router::RouterModule;
 use tokio::sync::mpsc::*;
+use tokio::sync::oneshot;
 use tokio::sync::{RwLock};
 // use tokio::task;
 use std::sync::Arc;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ModuleMsgEnum {
     MsgProcessing,   
     MsgClaManager,   
@@ -17,7 +18,8 @@ pub enum ModuleMsgEnum {
     MsgRouting,      
     MsgConfiguration,
     MsgBus(BusMessage),
-    ShutdownNow,      
+    ShutdownNow,
+    Error(String),  
 }
 
 enum RunState {
@@ -26,7 +28,7 @@ enum RunState {
     Shutdown,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum BusMessage {
     SetTx(Sender<ModuleMsgEnum>, RouterModule), // Modules set their TX
     GetTx(RouterModule, Sender<ModuleMsgEnum>),     // Modules can request all modules and respond on the TX
@@ -111,3 +113,26 @@ impl Bus {
 
 }
 
+pub fn send(mut tx: Sender<ModuleMsgEnum>, msg: ModuleMsgEnum) { // -> Result<(), tokio::sync::mpsc::error::SendError<ModuleMsgEnum>> {
+    debug!("Send: {:?}", msg);
+    
+    tokio::spawn(async move {
+        tx.send(msg).await;  
+    });
+}
+
+pub async fn rpc(tx: Sender<ModuleMsgEnum>, msg: ModuleMsgEnum, rx: oneshot::Receiver<ModuleMsgEnum>) -> Result<ModuleMsgEnum, oneshot::error::RecvError> {
+    // tokio::spawn(async move {
+    //     tx.send(msg).await;
+    // });
+
+    // TODO, handle errors better
+    let mut tx = tx.clone();
+    tx.send(msg).await;
+    //  {
+    //     Ok(()) => {},
+    //     Err(e) => { return Err(e); },
+    // }
+    // //.unwrap_or(ModuleMsgEnum::Error("Error sending msg".to_string()));
+    rx.await
+}

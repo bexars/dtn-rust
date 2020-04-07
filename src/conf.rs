@@ -5,8 +5,10 @@ use bp7::EndpointID;
 use tokio::sync::mpsc::*;
 use tokio::sync::{RwLock, Mutex};
 use std::sync::Arc;
-use crate::bus::{ModuleMsgEnum, BusMessage};
 use crate::router::RouterModule;
+use msg_bus::{MsgBusHandle, Message};
+use crate::bus::ModuleMsgEnum;
+
 
 pub enum ConfMessage {
     GetFullConfig(RouterModule),
@@ -27,42 +29,31 @@ pub struct Configuration {
 pub struct ConfManager {
     config: Arc<RwLock<Configuration>>,
     config_file: PathBuf,
-    bus_tx: Option<Sender<ModuleMsgEnum>>,
-    conf_tx: Sender<ModuleMsgEnum>,
-    conf_rx: Arc<Mutex<Receiver<ModuleMsgEnum>>>,
+    bus_handle: MsgBusHandle<RouterModule, ModuleMsgEnum>,
+    conf_rx: Arc<Mutex<Receiver<Message<ModuleMsgEnum>>>>,
 }
 
 impl ConfManager {
-    pub fn new( config_file: String) -> Self {
-        let (tx,rx) = channel::<ModuleMsgEnum>(50);
+    pub async fn new(config_file: String, mut bus_handle: MsgBusHandle<RouterModule, ModuleMsgEnum>) -> Self {
+        let rx = bus_handle.register(RouterModule::Configuration).await.unwrap();
         let config_file = PathBuf::from(config_file);
         let config = Arc::new(RwLock::new(Configuration::load_file(&config_file).unwrap()));
         Self {
             config,
             config_file,
-            bus_tx: None,
-            conf_tx: tx,
+            bus_handle: bus_handle,
             conf_rx: Arc::new(Mutex::new(rx)),
         }
     }
 
-    pub async fn start(&mut self, bus_tx: Sender<ModuleMsgEnum>) {
-        self.bus_tx = Some(bus_tx.clone());
+    pub async fn start(&mut self) {
         let rx = self.conf_rx.clone();
-        let tx = self.conf_tx.clone();
-        let mut bus_tx = bus_tx.clone();
-
-        tokio::spawn( {
-            async move {   
-                let _res = bus_tx.send(ModuleMsgEnum::MsgBus(  //TODO use the Result
-                                BusMessage::SetTx(
-                                    tx.clone(), RouterModule::Configuration))).await;
-            }});
+        let mut bus_handle = self.bus_handle.clone();
 
 
         while let Some(msg) = rx.lock().await.recv().await {
             match msg {
-                ModuleMsgEnum::ShutdownNow => {
+                Message::Shutdown => {
                     debug!("Received Shutdown");
                     break;
                 },

@@ -1,53 +1,56 @@
 use log::*;
 use shrust::{Shell, ShellIO};
 use std::io::prelude::*;
-use crate::bus::{ModuleMsgEnum, BusMessage};
+use crate::bus::{ModuleMsgEnum, BusMessage, send, rpc};
 use crate::router::RouterModule;
 use tokio::sync::mpsc::*;
 use tokio::sync::{RwLock, Mutex};
 use std::sync::Arc;
+use msg_bus::{MsgBusHandle, Message};
+
+
 
 pub struct CliManager {
-    bus_tx: Option<Sender<ModuleMsgEnum>>,
-    tx: Sender<ModuleMsgEnum>,
-    rx: Arc<Mutex<Receiver<ModuleMsgEnum>>>,
+    bus_handle: MsgBusHandle<RouterModule, ModuleMsgEnum>,
+    rx: Arc<Mutex<Receiver<Message<ModuleMsgEnum>>>>,
 
 }
 
 impl CliManager {
-    pub fn new() -> Self {
-        let (tx,rx) = channel::<ModuleMsgEnum>(50);
-
+    pub async fn new(mut bus_handle: MsgBusHandle<RouterModule, ModuleMsgEnum>) -> Self {
+        let rx = bus_handle.register(RouterModule::CLI).await.unwrap();
         Self {
-            tx:  tx,
             rx:  Arc::new(Mutex::new(rx)),
-            bus_tx:   None,
+            bus_handle,
         }
     }
-    pub fn start(&self, bus_tx: Sender<ModuleMsgEnum>)  -> tokio::task::JoinHandle<()> {
-        let bus_tx = bus_tx.clone();
-        tokio::task::spawn_blocking(|| start_shell(bus_tx))
+
+
+    pub async fn start(self) {
+        // bus_tx.send(ModuleMsgEnum::MsgBus(BusMessage::SetTx(tx.clone(), RouterModule::CLI))).await.unwrap();
+        
+        CliManager::start_shell(self.bus_handle.clone()).await;
     }
     
-}
 
-pub fn start_shell(bus_tx: Sender<ModuleMsgEnum>) {
-    let mut bus_tx = bus_tx;
-    let mut shell = Shell::new(());
-    shell.new_command_noargs("hello", "Say 'hello' to the world", |io, _| {
-        writeln!(io, "Hello World !!!")?;
-        Ok(())
-    });
-    shell.new_command_noargs("halt", "Stop all processing and shutdown", move |io, _|  {
-        writeln!(io, "Halting.")?;
-        let mut tx = bus_tx.clone();
-            tokio::spawn(async move {
-                let mut tx = tx;
-                tx.send(ModuleMsgEnum::ShutdownNow).await;
-            }
-            );
-        Ok(())
-    });
-
-    shell.run_loop(&mut ShellIO::default());
+    pub async fn start_shell(bus_handle: MsgBusHandle<RouterModule, ModuleMsgEnum>) {
+        let mut shell = Shell::new(());
+        let bus_handle = bus_handle.clone();
+        shell.new_command_noargs("hello", "Say 'hello' to the world", |io, _| {
+            writeln!(io, "Hello World !!!")?;
+            Ok(())
+        });
+        shell.new_command_noargs("halt", "Stop all processing and shutdown", move |io, _|  {
+            writeln!(io, "Halting.")?;
+            let mut bus_handle = bus_handle.clone();
+            bus_handle.blocking_send(RouterModule::Routing, ModuleMsgEnum::ShutdownNow);
+            Ok(())
+        });
+        shell.new_command("show", "Display data", 1, move |io,_, arg| {
+        //     let (tx, rx) = tokio::sync::oneshot::channel();
+        //    let res = tokio::spawn(rpc())
+            Ok(())
+        });
+        tokio::task::block_in_place(move || shell.run_loop(&mut ShellIO::default()));
+    }
 }
