@@ -18,7 +18,8 @@ futures = "0.3"
 bp7 = "0.6.1"
 test-case = "1.0.0"
 # fondant = "0.1.1"
-fondant = { path = "../../fondant/fondant" }
+# fondant = { path = "../../fondant/fondant" }
+fondant = { git = "https://github.com/bexars/fondant.git" }
 shrust = "0.0.7"
 # tokio-threadpool = "0.1.18"
 strum = "0.18.0"
