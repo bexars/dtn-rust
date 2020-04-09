@@ -8,11 +8,13 @@ use std::sync::Arc;
 use crate::router::RouterModule;
 use msg_bus::{MsgBusHandle, Message};
 use crate::bus::ModuleMsgEnum;
+use crate::cla::ClaConfiguration;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ConfMessage {
     GetConfigString,
     GetConfigStruct,
+    Save(Option<String>),
     DataConfigStruct(Configuration),
     DataConfigString(String),
     ConfigUpdated(RouterModule, Configuration),  // Try to be smart and tell which part of the config changed
@@ -25,6 +27,7 @@ pub struct Configuration {
     pub stcp_port: u16,
     pub stcp_enable: bool,
     pub local_eid: EndpointID,
+    pub cla: Vec<ClaConfiguration>,
 }
 
 
@@ -61,11 +64,27 @@ impl ConfManager {
                     debug!("Received Shutdown");
                     break;
                 },
-                Message::Rpc(ModuleMsgEnum::MsgConf(GetConfigString), sender) => {
-                    let mut conf = self.config.write().await;
-                    let conf_str = toml::to_string_pretty(&*conf).unwrap();
-                    sender.send(ModuleMsgEnum::MsgConf(ConfMessage::DataConfigString(conf_str)));
+                Message::Rpc(ModuleMsgEnum::MsgConf(call),rcpt) => {
+                    match call {
+                        ConfMessage::GetConfigString => {
+                            let conf = self.config.read().await;
+                            let conf_str = toml::to_string_pretty(&*conf).unwrap();
+                            rcpt.send(ModuleMsgEnum::MsgConf(ConfMessage::DataConfigString(conf_str)));
+                        },
+                        ConfMessage::Save(file_name) => {
+                            if let Some(file_name) = file_name {
+                                let pb = PathBuf::from(file_name);
+                                self.config.read().await.store_file(&pb);
+                                rcpt.send(ModuleMsgEnum::MsgOk("".to_string()));   
+                            } else {
+                                self.config.read().await.store();
+                                rcpt.send(ModuleMsgEnum::MsgOk("".to_string()));
+                            }
+                        }
+                        _ => {},
+                    };
                 },
+
                 _ => { trace!("Received unknown msg: {:?}", msg); },
             }
     
@@ -86,3 +105,11 @@ pub async fn get_conf(bh: &mut BusHandle) -> String {
         "Test".to_owned()
 }
 
+pub async fn save(bh: &mut BusHandle, file_name: Option<String>) -> Result<(), String> {
+    let res = bh.rpc(RouterModule::Configuration, ModuleMsgEnum::MsgConf(ConfMessage::Save(file_name))).await;
+    match res {
+        Ok(ModuleMsgEnum::MsgOk(_)) => { Ok(()) },
+        Ok(ModuleMsgEnum::MsgErr(e)) => { Err(e) },
+        _ => {Err("Unknown failure".to_owned()) },
+    }
+}
