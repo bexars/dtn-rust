@@ -9,7 +9,8 @@ pub enum ModuleMsgEnum {
     MsgAppAgent,     
     MsgRouting,      
     MsgConf(crate::conf::ConfMessage),
-    SystemMsg(crate::router::SystemMessage),
+    MsgSystem(crate::router::SystemMessage),
     ShutdownNow,
-    Error(String),  
+    MsgOk(String),
+    MsgErr(String),  
 }

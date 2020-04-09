@@ -83,7 +83,7 @@ pub async fn start(conf_file: String) {
     trace!("About to enter router loop");
     while let Some(msg) = rx.recv().await {
         match msg {
-            Message(ModuleMsgEnum::SystemMsg(SystemMessage::ShutdownRequested)) => {
+            Message(ModuleMsgEnum::MsgSystem(SystemMessage::ShutdownRequested)) => {
                 debug!("Received shutdown");
                 // bus_handle.broadcast(ModuleMsgEnum::ShutdownNow).await;
                 bus.clone().shutdown().await; 
