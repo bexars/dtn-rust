@@ -1,53 +1,40 @@
 use log::*;
-use super::super::router;
 use bp7::Bundle;
 use crate::cla::cla_handle::{ClaHandle, HandleId};
-use crate::cla::cla_manager::ClaManager;
-use tokio::prelude::*;
-use crate::bus::{ModuleMsgEnum, BusMessage};
+use crate::bus::ModuleMsgEnum;
 use crate::router::RouterModule;
 use tokio::sync::mpsc::*;
 use tokio::sync::{RwLock, Mutex};
 use std::sync::Arc;
+use msg_bus::{MsgBusHandle, Message};
 
 pub struct Processor {
     // pub adapters: Arc<RwLock<HashMap<HandleId, Arc<Mutex<ClaHandle>>>>>,
     // conf: Arc<RwLock<Configuration>>,
-    bus_tx: Option<Sender<ModuleMsgEnum>>,
-    tx: Sender<ModuleMsgEnum>,
-    rx: Arc<Mutex<Receiver<ModuleMsgEnum>>>,
+    bus_handle: MsgBusHandle<RouterModule, ModuleMsgEnum>,
+    rx: Arc<Mutex<Receiver<Message<ModuleMsgEnum>>>>,
 
 }
 
 impl Processor {
-    pub fn new() -> Self {
-        let (tx,rx) = channel::<ModuleMsgEnum>(50);
+    pub async fn new(mut bus_handle: MsgBusHandle<RouterModule, ModuleMsgEnum>) -> Self {
+        let rx = bus_handle.register(RouterModule::Processing).await.unwrap();
 
         Self {
-            tx,
             rx:  Arc::new(Mutex::new(rx)),
-            bus_tx:   None,
+            bus_handle,
         }
     }
 
-    pub async fn start(&mut self, bus_tx: Sender<ModuleMsgEnum>) {
-        self.bus_tx = Some(bus_tx.clone());
+    pub async fn start(&mut self) {
         let rx = self.rx.clone();
-        let tx = self.tx.clone();
 
-        let mut bus_tx = bus_tx.clone();
-        tokio::spawn( {
-            async move {   
-                let res = bus_tx.send(ModuleMsgEnum::MsgBus(
-                                BusMessage::SetTx(
-                                    tx.clone(), RouterModule::Processing))).await;
-            }});
-
+        let mut bus_handle = self.bus_handle.clone();
 
         while let Some(msg) = rx.lock().await.recv().await {
                 // Listen for updates from CLAs
                 match msg {
-                    ModuleMsgEnum::ShutdownNow => { break; },
+                    Message::Shutdown => { break; },
                     _ => { debug!("Unknown msg: {:?}", msg); },
                 };
             

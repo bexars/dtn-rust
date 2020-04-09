@@ -7,11 +7,13 @@ use super::stcp_server::StcpServer;
 use std::collections::HashMap;
 use bp7::Bundle;
 use tokio::prelude::*;
-use crate::bus::{ModuleMsgEnum, BusMessage};
+use crate::bus::{ModuleMsgEnum};
 use crate::router::RouterModule;
 use tokio::sync::mpsc::*;
 use tokio::sync::{RwLock, Mutex};
 use std::sync::Arc;
+use msg_bus::{MsgBusHandle, Message};
+
 
 
 
@@ -19,59 +21,40 @@ use std::sync::Arc;
 pub struct ClaManager {
     pub adapters: Arc<RwLock<HashMap<HandleId, Arc<Mutex<ClaHandle>>>>>,
     // conf: Arc<RwLock<Configuration>>,
-    bus_tx: Option<Sender<ModuleMsgEnum>>,
-    clam_tx: Sender<ModuleMsgEnum>,
-    clam_rx: Arc<Mutex<Receiver<ModuleMsgEnum>>>,
+    bus_handle: MsgBusHandle<RouterModule, ModuleMsgEnum>,
+    clam_rx: Arc<Mutex<Receiver<Message<ModuleMsgEnum>>>>,
 
 }
 
 impl ClaManager {
 
-    pub fn new() -> Self {
-        let (tx,rx) = channel::<ModuleMsgEnum>(50);
+    pub async fn new(mut bus_handle: MsgBusHandle<RouterModule, ModuleMsgEnum>) -> Self {
+        let rx = bus_handle.register(RouterModule::ClaManager).await.unwrap();
 
         Self {
-            clam_tx:  tx,
             clam_rx:  Arc::new(Mutex::new(rx)),
-            bus_tx:   None,
+            bus_handle,
             adapters: Arc::new(RwLock::new(HashMap::<HandleId, Arc<Mutex<ClaHandle>>>::new())),
         }
     }
 
-    pub async fn start(&mut self, bus_tx: Sender<ModuleMsgEnum>) {
-        self.bus_tx = Some(bus_tx.clone());
+    pub async fn start(&mut self) {
         let rx = self.clam_rx.clone();
-        let tx = self.clam_tx.clone();
-        let mut bus_tx = bus_tx.clone();
+        let mut bus_handle = self.bus_handle.clone();
  
-        
-        tokio::spawn( {
-            async move {   
-                let res = bus_tx.send(ModuleMsgEnum::MsgBus(
-                                BusMessage::SetTx(
-                                    tx.clone(), RouterModule::ClaManager))).await;
-            }});
-
-        //tokio::spawn(async move {
+    
         while let Some(msg) = rx.lock().await.recv().await {
             // Listen for updates from CLAs
             debug!("Received msg: {:?}", msg);
             match msg {
-                ModuleMsgEnum::ShutdownNow => { 
+                Message::Shutdown => { 
                     debug!("Received Halt");
                     break; },
                 _ => {},
             }
-
-
-            tokio::spawn(async move {
-                // Do something with the msg
-            });
         } // end While
-        // });  // end spawn
 
-     
-
+        debug!("Exited cla_manager loop");
     }
 
     // pub async fn old_start(&self, tx: Sender<(HandleId, Bundle)>) {
