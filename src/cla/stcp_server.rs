@@ -23,7 +23,7 @@ pub struct StcpServer {
 
 impl StcpServer {
 
-    pub const CLA_TYPE: ClaType = ClaType::StcpListener;
+    // pub const CLA_TYPE: ClaType = ClaType::StcpListener;
     pub const CLA_RW: ClaRW = ClaRW::R;
 
     pub fn new(cla_handle: Arc<RwLock<ClaHandle>>, port: u16) -> StcpServer {
