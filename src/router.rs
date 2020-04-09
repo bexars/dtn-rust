@@ -21,6 +21,7 @@ use msg_bus::Message::*;
 
 pub mod processor;
 
+type BusHandle = MsgBusHandle<RouterModule, ModuleMsgEnum>;
 
 
 pub struct CmdLineOpts {
@@ -92,5 +93,8 @@ pub async fn start(conf_file: String) {
             _ => {},
         }
     }
+}
 
+pub async fn halt(bh: &mut BusHandle) {
+    bh.send(RouterModule::System, ModuleMsgEnum::MsgSystem(SystemMessage::ShutdownRequested)).await;
 }
