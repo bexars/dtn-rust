@@ -1,9 +1,7 @@
 use log::*;
-use super::super::router;
 use bp7::Bundle;
 use crate::cla::cla_handle::{ClaHandle, HandleId};
-use crate::cla::cla_manager::ClaManager;
-use crate::bus::{ModuleMsgEnum, BusMessage};
+use crate::bus::ModuleMsgEnum;
 use crate::router::RouterModule;
 use tokio::sync::mpsc::*;
 use tokio::sync::{RwLock, Mutex};

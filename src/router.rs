@@ -15,6 +15,7 @@ use crate::cla::cla_manager::ClaManager;
 use strum::{IntoEnumIterator};
 use strum_macros::*;
 use msg_bus::{Message, MsgBus, MsgBusHandle};
+use msg_bus::Message::*;    
 
 // use std::path::PathBuf;
 
@@ -24,6 +25,11 @@ pub mod processor;
 
 pub struct CmdLineOpts {
     pub config_file: String,
+}
+
+#[derive(EnumIter, Debug, PartialEq, Eq, Hash, Clone)]
+pub enum SystemMessage {
+    ShutdownRequested,
 }
 
 #[derive(EnumIter, Debug, PartialEq, Eq, Hash, Clone)]
@@ -40,14 +46,14 @@ pub enum RouterModule {
     System,          // System to control the system
 }
 
-
 #[tokio::main]
+//#[tokio::main(core_threads = 2)]
 pub async fn start(conf_file: String) {
 
     //conf.store_file(&conf_file).unwrap();
     //println!("{}", toml::to_string_pretty(&conf).unwrap());
 
-    let (bus, bus_handle) = MsgBus::<RouterModule, ModuleMsgEnum>::new();
+    let (bus, mut bus_handle) = MsgBus::<RouterModule, ModuleMsgEnum>::new();
 
     let mut rx = bus_handle.clone().register(RouterModule::System).await.unwrap();
     // let (mut msg_bus_old, bus_tx, bus_rx) = bus::Bus::new();
@@ -59,10 +65,10 @@ pub async fn start(conf_file: String) {
     let mut cla_mgr = ClaManager::new(bus_handle.clone()).await;
     let mut cli_mgr = cli::CliManager::new(bus_handle.clone()).await;
 
-    let han_conf = conf_mgr.start().await;
-    let han_proc = proc_mgr.start().await;
-    let han_clam = cla_mgr.start().await;
-    let han_clim = cli_mgr.start().await;
+    let han_conf = task::spawn(async move { conf_mgr.start().await; });
+    let han_proc = task::spawn(async move { proc_mgr.start().await; });
+    let han_clam = task::spawn(async move { cla_mgr.start().await; });
+    let han_clim = cli_mgr.start();
 
     //    let mut processor = Processor::new();        
 //    task::spawn_blocking(|| {cli::start()});
@@ -74,9 +80,15 @@ pub async fn start(conf_file: String) {
 //     info!("All threads shut down.");
     // tokio::join!(han_clim);    
 
+    trace!("About to enter router loop");
     while let Some(msg) = rx.recv().await {
         match msg {
-            Message::Shutdown => { bus.clone().shutdown().await; },
+            Message(ModuleMsgEnum::SystemMsg(SystemMessage::ShutdownRequested)) => {
+                debug!("Received shutdown");
+                // bus_handle.broadcast(ModuleMsgEnum::ShutdownNow).await;
+                bus.clone().shutdown().await; 
+                break;
+            },
             _ => {},
         }
     }

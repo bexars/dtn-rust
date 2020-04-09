@@ -7,7 +7,7 @@ use super::stcp_server::StcpServer;
 use std::collections::HashMap;
 use bp7::Bundle;
 use tokio::prelude::*;
-use crate::bus::{ModuleMsgEnum, BusMessage};
+use crate::bus::{ModuleMsgEnum};
 use crate::router::RouterModule;
 use tokio::sync::mpsc::*;
 use tokio::sync::{RwLock, Mutex};
@@ -52,16 +52,9 @@ impl ClaManager {
                     break; },
                 _ => {},
             }
-
-
-            tokio::spawn(async move {
-                // Do something with the msg
-            });
         } // end While
-        // });  // end spawn
 
-     
-
+        debug!("Exited cla_manager loop");
     }
 
     // pub async fn old_start(&self, tx: Sender<(HandleId, Bundle)>) {

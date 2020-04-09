@@ -9,15 +9,17 @@ use crate::router::RouterModule;
 use msg_bus::{MsgBusHandle, Message};
 use crate::bus::ModuleMsgEnum;
 
-
+#[derive(Debug, Clone, PartialEq)]
 pub enum ConfMessage {
-    GetFullConfig(RouterModule),
-    PayloadFullConfig(Configuration),
+    GetConfigString,
+    GetConfigStruct,
+    DataConfigStruct(Configuration),
+    DataConfigString(String),
     ConfigUpdated(RouterModule, Configuration),  // Try to be smart and tell which part of the config changed
 }
 
 
-#[derive(Configure, Serialize, Deserialize, Default)]
+#[derive(Configure, Serialize, Deserialize, Default, Debug, Clone, PartialEq)]
 #[config_file = "config.toml"]
 pub struct Configuration {
     pub stcp_port: u16,
@@ -32,6 +34,8 @@ pub struct ConfManager {
     bus_handle: MsgBusHandle<RouterModule, ModuleMsgEnum>,
     conf_rx: Arc<Mutex<Receiver<Message<ModuleMsgEnum>>>>,
 }
+
+type BusHandle = MsgBusHandle<RouterModule, ModuleMsgEnum>;
 
 impl ConfManager {
     pub async fn new(config_file: String, mut bus_handle: MsgBusHandle<RouterModule, ModuleMsgEnum>) -> Self {
@@ -57,7 +61,12 @@ impl ConfManager {
                     debug!("Received Shutdown");
                     break;
                 },
-                _ => { trace!("Received unknown msg: {:?}", msg); }
+                Message::Rpc(ModuleMsgEnum::MsgConf(GetConfigString), sender) => {
+                    let mut conf = self.config.write().await;
+                    let conf_str = toml::to_string_pretty(&*conf).unwrap();
+                    sender.send(ModuleMsgEnum::MsgConf(ConfMessage::DataConfigString(conf_str)));
+                },
+                _ => { trace!("Received unknown msg: {:?}", msg); },
             }
     
             // Listen for config updates and requests
@@ -65,5 +74,15 @@ impl ConfManager {
     
         
 
-    }    
+    }
 }
+
+pub async fn get_conf(bh: &mut BusHandle) -> String {
+    let conf = bh.rpc(RouterModule::Configuration, ModuleMsgEnum::MsgConf(ConfMessage::GetConfigString)).await;
+    if let Ok(ModuleMsgEnum::MsgConf(ConfMessage::DataConfigString(conf_str))) = conf {
+        return conf_str;
+    } 
+    
+        "Test".to_owned()
+}
+
