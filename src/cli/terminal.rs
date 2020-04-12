@@ -1,3 +1,4 @@
+use log::*;
 use linefeed;
 use rand;
 
@@ -36,31 +37,51 @@ enum Mode {
 
 
 
-pub(super) fn start(bh: BusHandle) -> io::Result<()> {
-    let interface = Arc::new(Interface::new("demo")?);
-    let mut thread_id = 0;
+pub(super) fn start(file: Option<String>, bh: BusHandle) -> io::Result<()> {
+
+    let file2 = file.clone();    
+    let mut out: Box<dyn std::io::Write> = if let Some(file) = file2 {
+        Box::new(std::fs::File::create(file).unwrap())
+    } else {
+        Box::new(std::io::stdout())
+    };
+
+    writeln!(out, "Hello World")?;
+
+    let interface = if let Some(file) = file {
+        // Interface::with_term("my-app", mortal::unix::OpenTerminalExt::from_path(file).map(linefeed::DefaultTerminal).unwrap()
+        Interface::with_term("my-app", linefeed::DefaultTerminal::new_path(file).unwrap()).unwrap()
+    } else {
+        Interface::new("my-application").unwrap()
+
+    };
+
+
+    // let interface = Arc::new(Interface::new("demo").unwrap());
+    // println!("After new interface");
     let repeater = Arc::new(MainCompleter);
     let mut mode = Mode::Normal;
     // level.push(mode);
 
-    println!("dtnrouter - ALPHA Unstable");
-    println!("Enter \"help\" for a list of commands.");
-    println!("Press Ctrl-D or enter \"quit\" to exit.");
-    println!("");
+    writeln!(out, "dtnrouter - ALPHA Unstable")?;
+    writeln!(out, "Enter \"help\" for a list of commands.")?;
+    writeln!(out, "Press Ctrl-D or enter \"quit\" to exit.")?;
+    writeln!(out, "")?;
+    debug!("Printed the info banner for CLI");
 
+//    interface.set_completer(repeater);
+//    interface.set_prompt("> ")?;  //TODO set a Hostname in conf
 
-    interface.set_completer(repeater);
-    interface.set_prompt("> ")?;  //TODO set a Hostname in conf
+    // if let Err(e) = interface.load_history(HISTORY_FILE) {
+    //     if e.kind() == io::ErrorKind::NotFound {
+    //         writeln!(out, "History file {} doesn't exist, not loading history.", HISTORY_FILE);
+    //     } else {
+    //         writeln!(out, "Could not load history file {}: {}", HISTORY_FILE, e);
+    //     }
+    // }
 
-    if let Err(e) = interface.load_history(HISTORY_FILE) {
-        if e.kind() == io::ErrorKind::NotFound {
-            println!("History file {} doesn't exist, not loading history.", HISTORY_FILE);
-        } else {
-            eprintln!("Could not load history file {}: {}", HISTORY_FILE, e);
-        }
-    }
-
-    while let ReadResult::Input(line) = interface.read_line()? {
+    while let ReadResult::Input(line) = interface.read_line().unwrap() {
+        writeln!(out, "In: {}", line)?;
         if !line.trim().is_empty() {
             interface.add_history_unique(line.clone());
         }
@@ -69,34 +90,36 @@ pub(super) fn start(bh: BusHandle) -> io::Result<()> {
 
         match (cmd, mode_l) {
             ("help", Mode::Normal) => {
-                println!("dtn commands:");
-                println!();
+                writeln!(out, "dtn commands:")?;
+                writeln!(out)?;
                 for &(cmd, help) in MAIN_COMMANDS {
-                    println!("  {:15} - {}", cmd, help);
+                    writeln!(out, "  {:15} - {}", cmd, help)?;
                 }
-                println!();
+                writeln!(out)?;
             }
             ("list-commands", Mode::Normal) => {
                 for cmd in COMMANDS {
-                    println!("{}", cmd);
+                    writeln!(out, "{}", cmd)?;
                 }
             }
             ("show", _) => {
                 let (subcmd, args) = split_first_word(&args);
                 match subcmd {
                     "help" => {
-                        println!("dtn commands:");
-                        println!();
+                        writeln!(out, "dtn commands:")?;
+                        writeln!(out, )?;
                         for &(cmd, help) in SHOW_COMMANDS {
-                            println!("show {:15} - {}", cmd, help);
+                            writeln!(out, "show {:15} - {}", cmd, help)?;
                         }
-                        println!();
+                        writeln!(out)?;
                     }
                     "configuration" => {
                         let res = futures::executor::block_on(crate::conf::get_conf(&mut bh.clone()));
-                        println!("{}", res);
+                        writeln!(out, "{}", res)?;
                     }
-                    _ => println!("read input: {:?}", line)
+                    _ => { 
+                        writeln!(out, "read input: {:?}", line)?; 
+                    }
 
                 }
             }
@@ -107,18 +130,18 @@ pub(super) fn start(bh: BusHandle) -> io::Result<()> {
                 let w = interface.lock_writer_erase()?;
 
                 for (i, entry) in w.history().enumerate() {
-                    println!("{}: {}", i, entry);
+                    writeln!(out, "{}: {}", i, entry)?;
                 }
             }
             ("save-history",_) => {
                 if let Err(e) = interface.save_history(HISTORY_FILE) {
-                    eprintln!("Could not save history file {}: {}", HISTORY_FILE, e);
+                    writeln!(out, "Could not save history file {}: {}", HISTORY_FILE, e)?;
                 } else {
-                    println!("History saved to {}", HISTORY_FILE);
+                    writeln!(out, "History saved to {}", HISTORY_FILE)?;
                 }
             }
             ("configuration", Mode::Normal) => {
-                    interface.set_prompt("(conf)> ");
+                    interface.set_prompt("(conf)> ")?;
                     interface.set_completer(Arc::new(ConfCompleter));
                     mode = Mode::Conf;
                 }
@@ -127,7 +150,7 @@ pub(super) fn start(bh: BusHandle) -> io::Result<()> {
                 match subcmd {
                     "loopback" => {
                         mode = Mode::ConfCla(ClaType::LoopBack, args.to_string());
-                        interface.set_prompt(&format!("(conf-cla-loopback:{}> ", args));
+                        interface.set_prompt(&format!("(conf-cla-loopback:{}> ", args))?;
                         interface.set_completer(Arc::new(ClaCompleter));
                     }
                     _ => {}
@@ -137,21 +160,31 @@ pub(super) fn start(bh: BusHandle) -> io::Result<()> {
                 match m {
                     Mode::Normal => break,
                     Mode::Conf => { 
-                        interface.set_prompt(">");
+                        interface.set_prompt(">")?;
                         interface.set_completer(Arc::new(MainCompleter));
                         mode = Mode::Normal; 
                     },
                     Mode::ConfCla(_,_) => {
-                        interface.set_prompt("(conf)>"); 
+                        interface.set_prompt("(conf)>")?; 
                         mode = Mode::Conf; 
                     },
                 } 
             }
-            (_,_) => println!("read input: {:?}", line)
+            ("save", Mode::Normal) => {
+                futures::executor::block_on(crate::conf::save(&mut bh.clone(), None));
+            }
+            ("telnet", Mode::Conf) => {
+                let (enabled, args) = split_first_word(&args);
+                let mut cli_conf = futures::executor::block_on(crate::conf::get_cli_conf(&mut bh.clone()));
+                if enabled == "true" { cli_conf.telnet_enabled = true } else { cli_conf.telnet_enabled = false };
+                futures::executor::block_on(crate::conf::set_cli_conf(&mut bh.clone(), cli_conf));
+
+            }
+            (_,_) => { writeln!(out, "read input: {:?}", line)?; }
         }
     }
 
-    println!("Goodbye.");
+    writeln!(out, "Goodbye.")?;
 
     Ok(())
 }
@@ -186,6 +219,7 @@ static CONF_COMMANDS: &[(&str, &str)] = &[
     ("list-commands",    "List command names"),
     ("history",          "Print history"),
     ("show",             "Display information"),
+    ("telnet",           "telnet [enabled:bool] <bind-address> <port>"),
     ("quit",             "Quit to command mode"),
 ];
 

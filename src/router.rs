@@ -47,7 +47,7 @@ pub enum RouterModule {
     System,          // System to control the system
 }
 
-#[tokio::main]
+#[tokio::main (core_threads=2)]
 //#[tokio::main(core_threads = 2)]
 pub async fn start(conf_file: String) {
 
@@ -69,7 +69,7 @@ pub async fn start(conf_file: String) {
     let han_conf = task::spawn(async move { conf_mgr.start().await; });
     let han_proc = task::spawn(async move { proc_mgr.start().await; });
     let han_clam = task::spawn(async move { cla_mgr.start().await; });
-    let han_clim = cli_mgr.start();
+    let han_clim = task::spawn(async move { cli_mgr.start().await; });
 
     //    let mut processor = Processor::new();        
 //    task::spawn_blocking(|| {cli::start()});

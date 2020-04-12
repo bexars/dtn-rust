@@ -27,8 +27,13 @@ strum_macros = "0.18.0"
 log = "0.4.8"
 env_logger = "0.7.1"
 msg_bus = { git = "https://github.com/bexars/msg_bus.git" }
-linefeed = "0.6.0"
+#linefeed = "0.6.0"
+linefeed = { git = "https://github.com/bexars/linefeed.git" }
 rand = "0.7.3"
+futures-util = "0.3.4"
+socket2 = "0.3.12"
+stdio-override = "0.1.3"
+nix = "0.17.0"
 
 [[bin]]
 name = "dtcat"
