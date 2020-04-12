@@ -1,6 +1,5 @@
 use dtn::router;
 use clap::Clap;
-use bp7::eid::EndpointID;
 use log::{debug};
 
 

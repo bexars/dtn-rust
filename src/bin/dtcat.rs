@@ -1,6 +1,4 @@
 use std::io::Write;
-use std::net::IpAddr;
-use std::str::FromStr;
 use clap::Clap;
 use std::process;
 use std::io::{self, Read};
@@ -11,7 +9,6 @@ use bp7::primary::PrimaryBlock;
 use bp7::eid::EndpointID;
 use dtn::stcp;
 use std::net::TcpStream;
-use std::net::SocketAddr;
 
 #[derive(Debug)]
 #[derive(Clap)]

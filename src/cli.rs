@@ -1,8 +1,4 @@
 use log::*;
-use shrust::{Shell, ShellIO};
-use std::io::prelude::*;
-use crate::bus::ModuleMsgEnum::*;
-use crate::router::RouterModule::*;
 use crate::bus::ModuleMsgEnum;
 use crate::router::RouterModule;
 use msg_bus::{MsgBusHandle, Message};
@@ -45,7 +41,7 @@ impl CliManager {
         }
     }
 
-    async fn conf_updated(mut self, cli_conf: &CliConfiguration) {
+    async fn conf_updated(self, cli_conf: &CliConfiguration) {
         trace!("Old conf: {:?}", self.cli_conf);
         trace!("New conf: {:?}", cli_conf);
         // if self.cli_conf.telnet_enabled == cli_conf.telnet_enabled {
@@ -68,16 +64,14 @@ impl CliManager {
 
 
         // let handle = tokio::task::spawn_blocking(move || CliManager::start_shell(self.bus_handle.clone()));
-        let mut bh = self.bus_handle.clone();
+        let bh = self.bus_handle.clone();
         let orig_conf = crate::conf::get_cli_conf(&mut bh.clone()).await;
         let clim = self.clone();
         &clim.conf_updated(&orig_conf).await;
 
 
 
-        debug!("About to spawn terminal");
-        let handle = tokio::task::spawn_blocking(move || self::terminal::start(None, bh.clone()));
-        debug!("spawn terminal returned");
+        let _handle = tokio::task::spawn_blocking(move || self::terminal::start(None, bh.clone()));
 
         let rx = self.rx.clone();
         while let Some(msg) = rx.lock().await.recv().await {

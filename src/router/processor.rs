@@ -29,7 +29,7 @@ impl Processor {
     pub async fn start(&mut self) {
         let rx = self.rx.clone();
 
-        let mut bus_handle = self.bus_handle.clone();
+        let bus_handle = self.bus_handle.clone();
 
         while let Some(msg) = rx.lock().await.recv().await {
                 // Listen for updates from CLAs
@@ -47,7 +47,7 @@ impl Processor {
 
 
     }
-    pub async fn process_bundle(&self, bundle: Bundle, handle_id: HandleId) {
+    pub async fn process_bundle(&self, _bundle: Bundle, _handle_id: HandleId) {
         // Process flags
 
         // update CLA stats

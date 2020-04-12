@@ -1,16 +1,11 @@
 use log::*;
 use linefeed;
-use rand;
 
 use std::io;
 use std::sync::Arc;
-use std::thread;
-use std::time::Duration;
-
-use rand::{Rng, thread_rng};
 
 use linefeed::{Interface, Prompter, ReadResult};
-use linefeed::chars::escape_sequence;
+// use linefeed::chars::escape_sequence;
 use linefeed::command::COMMANDS;
 use linefeed::complete::{Completer, Completion};
 // use linefeed::inputrc::parse_text;
@@ -73,9 +68,9 @@ pub(super) fn start(file: Option<String>, bh: BusHandle) -> io::Result<()> {
 
     if let Err(e) = interface.load_history(HISTORY_FILE) {
         if e.kind() == io::ErrorKind::NotFound {
-            writeln!(out, "History file {} doesn't exist, not loading history.", HISTORY_FILE);
+            writeln!(out, "History file {} doesn't exist, not loading history.", HISTORY_FILE)?;
         } else {
-            writeln!(out, "Could not load history file {}: {}", HISTORY_FILE, e);
+            writeln!(out, "Could not load history file {}: {}", HISTORY_FILE, e)?;
         }
     }
 
@@ -83,7 +78,7 @@ pub(super) fn start(file: Option<String>, bh: BusHandle) -> io::Result<()> {
         if !line.trim().is_empty() {
             interface.add_history_unique(line.clone());
         }
-        let mut mode_l = mode.clone();
+        let mode_l = mode.clone();
         let (cmd, args) = split_first_word(&line);
 
         match (cmd, mode_l) {
@@ -101,7 +96,7 @@ pub(super) fn start(file: Option<String>, bh: BusHandle) -> io::Result<()> {
                 }
             }
             ("show", _) => {
-                let (subcmd, args) = split_first_word(&args);
+                let (subcmd, _args) = split_first_word(&args);
                 match subcmd {
                     "help" => {
                         writeln!(out, "dtn commands:")?;
@@ -122,7 +117,7 @@ pub(super) fn start(file: Option<String>, bh: BusHandle) -> io::Result<()> {
                 }
             }
             ("halt", Mode::Normal) => {
-                let res = futures::executor::block_on(crate::router::halt(&mut bh.clone()));
+                let _res = futures::executor::block_on(crate::router::halt(&mut bh.clone()));
             }
             ("history", _) => {
                 let w = interface.lock_writer_erase()?;
@@ -172,9 +167,9 @@ pub(super) fn start(file: Option<String>, bh: BusHandle) -> io::Result<()> {
                 let file_name = if args.len() > 0 { Some(args.to_owned()) } else { None };
                 let res = futures::executor::block_on(crate::conf::save(&mut bh.clone(), file_name));
                 if let Err(e) = res {
-                    writeln!(out, "{}", e);
+                    writeln!(out, "{}", e)?;
                 } else { 
-                    writeln!(out, "Success."); };
+                    writeln!(out, "Success.")?; };
             }
             // ("telnet", Mode::Conf) => {
             //     let (enabled, args) = split_first_word(&args);

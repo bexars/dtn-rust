@@ -1,20 +1,11 @@
 use log::*;
-use tokio::net::TcpListener;
-use tokio::prelude::*;
-use futures::stream::StreamExt;
 use tokio::task;
-use bp7::eid::EndpointID;
-use processor::Processor;
-use std::sync::Arc;
-use fondant::Configure;
-use serde::{Serialize, Deserialize};
 use crate::cli;
 use crate::bus::ModuleMsgEnum;
 use crate::conf;
 use crate::cla::cla_manager::ClaManager;
-use strum::{IntoEnumIterator};
 use strum_macros::*;
-use msg_bus::{Message, MsgBus, MsgBusHandle};
+use msg_bus::{MsgBus, MsgBusHandle};
 use msg_bus::Message::*;    
 
 // use std::path::PathBuf;
@@ -54,7 +45,7 @@ pub async fn start(conf_file: String) {
     //conf.store_file(&conf_file).unwrap();
     //println!("{}", toml::to_string_pretty(&conf).unwrap());
 
-    let (bus, mut bus_handle) = MsgBus::<RouterModule, ModuleMsgEnum>::new();
+    let (bus, bus_handle) = MsgBus::<RouterModule, ModuleMsgEnum>::new();
 
     let mut rx = bus_handle.clone().register(RouterModule::System).await.unwrap();
     // let (mut msg_bus_old, bus_tx, bus_rx) = bus::Bus::new();
@@ -64,12 +55,12 @@ pub async fn start(conf_file: String) {
     // Storage here
     let mut proc_mgr = processor::Processor::new(bus_handle.clone()).await;
     let mut cla_mgr = ClaManager::new(bus_handle.clone()).await;
-    let mut cli_mgr = cli::CliManager::new(bus_handle.clone()).await;
+    let cli_mgr = cli::CliManager::new(bus_handle.clone()).await;
 
-    let han_conf = task::spawn(async move { conf_mgr.start().await; });
-    let han_proc = task::spawn(async move { proc_mgr.start().await; });
-    let han_clam = task::spawn(async move { cla_mgr.start().await; });
-    let han_clim = task::spawn(async move { cli_mgr.start().await; });
+    let _han_conf = task::spawn(async move { conf_mgr.start().await; });
+    let _han_proc = task::spawn(async move { proc_mgr.start().await; });
+    let _han_clam = task::spawn(async move { cla_mgr.start().await; });
+    let _han_clim = task::spawn(async move { cli_mgr.start().await; });
 
     //    let mut processor = Processor::new();        
 //    task::spawn_blocking(|| {cli::start()});
@@ -95,6 +86,10 @@ pub async fn start(conf_file: String) {
     }
 }
 
+// *****************************************************************************************
+//    Messaging helpers
+// *****************************************************************************************
+
 pub async fn halt(bh: &mut BusHandle) {
-    bh.send(RouterModule::System, ModuleMsgEnum::MsgSystem(SystemMessage::ShutdownRequested)).await;
+    bh.send(RouterModule::System, ModuleMsgEnum::MsgSystem(SystemMessage::ShutdownRequested)).await.unwrap();
 }

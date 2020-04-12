@@ -81,15 +81,15 @@ impl ConfManager {
                         ConfMessage::GetConfigString => {
                             let conf = self.config.read().await;
                             let conf_str = toml::to_string_pretty(&*conf).unwrap();
-                            rcpt.send(ModuleMsgEnum::MsgConf(ConfMessage::DataConfigString(conf_str)));
+                            rcpt.send(ModuleMsgEnum::MsgConf(ConfMessage::DataConfigString(conf_str))).unwrap();
                         },
                         ConfMessage::GetConfigCli => {
-                            rcpt.send(ModuleMsgEnum::MsgConf(ConfMessage::DataConfigCli(self.config.read().await.cli.clone())));
+                            rcpt.send(ModuleMsgEnum::MsgConf(ConfMessage::DataConfigCli(self.config.read().await.cli.clone()))).unwrap();
                         },
                         ConfMessage::SetConfigCli(cli_conf) => {
                             self.config.write().await.cli = cli_conf.clone();
-                            bus_handle.send(RouterModule::CLI, ModuleMsgEnum::MsgConf(ConfMessage::DataConfigCli(cli_conf))).await;
-                            rcpt.send(ModuleMsgEnum::MsgOk("".to_string()));
+                            bus_handle.send(RouterModule::CLI, ModuleMsgEnum::MsgConf(ConfMessage::DataConfigCli(cli_conf))).await.unwrap();
+                            rcpt.send(ModuleMsgEnum::MsgOk("".to_string())).unwrap();
                         },
                         ConfMessage::Save(file_name) => {
                             async fn run(config: &Arc<RwLock<Configuration>>, file_name: Option<String>) -> Result<(), FondantError> {
