@@ -13,20 +13,15 @@ use std::sync::Arc;
 
 
 mod terminal;
-mod telnet_service;
+// mod telnet_service;
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct CliConfiguration {
-    telnet_enabled: bool, 
-    telnet_port: u16,
-    telnet_address: String, 
+
 }
 impl Default for CliConfiguration {
     fn default() -> Self { 
         Self {
-            telnet_enabled: false,
-            telnet_port: 23,
-            telnet_address: "[::1]".to_string(),
         }
     }
 }
@@ -36,7 +31,7 @@ pub struct CliManager {
     bus_handle: MsgBusHandle<RouterModule, ModuleMsgEnum>,
     rx: Arc<Mutex<Receiver<Message<ModuleMsgEnum>>>>,
     cli_conf: CliConfiguration,
-    telnet_handle: Option<telnet_service::TelnetService>,
+    // telnet_handle: Option<telnet_service::TelnetService>,
 }
 
 impl CliManager {
@@ -46,20 +41,20 @@ impl CliManager {
             rx:  Arc::new(Mutex::new(rx)),
             bus_handle,
             cli_conf: CliConfiguration::default(),
-            telnet_handle: None,
+            // telnet_handle: None,
         }
     }
 
     async fn conf_updated(mut self, cli_conf: &CliConfiguration) {
         trace!("Old conf: {:?}", self.cli_conf);
         trace!("New conf: {:?}", cli_conf);
-        if self.cli_conf.telnet_enabled == cli_conf.telnet_enabled {
-            if self.cli_conf.telnet_enabled == false  { return; };
-            if self.cli_conf.telnet_port == cli_conf.telnet_port &&
-               self.cli_conf.telnet_address == cli_conf.telnet_address { return; };
-        };
+        // if self.cli_conf.telnet_enabled == cli_conf.telnet_enabled {
+        //     if self.cli_conf.telnet_enabled == false  { return; };
+        //     if self.cli_conf.telnet_port == cli_conf.telnet_port &&
+        //        self.cli_conf.telnet_address == cli_conf.telnet_address { return; };
+        // };
 
-        self.telnet_handle = Some(telnet_service::TelnetService::start(cli_conf, self.bus_handle.clone()).await);
+        // self.telnet_handle = Some(telnet_service::TelnetService::start(cli_conf, self.bus_handle.clone()).await);
            
 
     } 

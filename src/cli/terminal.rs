@@ -67,21 +67,19 @@ pub(super) fn start(file: Option<String>, bh: BusHandle) -> io::Result<()> {
     writeln!(out, "Enter \"help\" for a list of commands.")?;
     writeln!(out, "Press Ctrl-D or enter \"quit\" to exit.")?;
     writeln!(out, "")?;
-    debug!("Printed the info banner for CLI");
 
-//    interface.set_completer(repeater);
-//    interface.set_prompt("> ")?;  //TODO set a Hostname in conf
+    interface.set_completer(repeater);
+    interface.set_prompt("> ")?;  //TODO set a Hostname in conf
 
-    // if let Err(e) = interface.load_history(HISTORY_FILE) {
-    //     if e.kind() == io::ErrorKind::NotFound {
-    //         writeln!(out, "History file {} doesn't exist, not loading history.", HISTORY_FILE);
-    //     } else {
-    //         writeln!(out, "Could not load history file {}: {}", HISTORY_FILE, e);
-    //     }
-    // }
+    if let Err(e) = interface.load_history(HISTORY_FILE) {
+        if e.kind() == io::ErrorKind::NotFound {
+            writeln!(out, "History file {} doesn't exist, not loading history.", HISTORY_FILE);
+        } else {
+            writeln!(out, "Could not load history file {}: {}", HISTORY_FILE, e);
+        }
+    }
 
     while let ReadResult::Input(line) = interface.read_line().unwrap() {
-        writeln!(out, "In: {}", line)?;
         if !line.trim().is_empty() {
             interface.add_history_unique(line.clone());
         }
@@ -171,16 +169,22 @@ pub(super) fn start(file: Option<String>, bh: BusHandle) -> io::Result<()> {
                 } 
             }
             ("save", Mode::Normal) => {
-                futures::executor::block_on(crate::conf::save(&mut bh.clone(), None));
+                let file_name = if args.len() > 0 { Some(args.to_owned()) } else { None };
+                let res = futures::executor::block_on(crate::conf::save(&mut bh.clone(), file_name));
+                if let Err(e) = res {
+                    writeln!(out, "{}", e);
+                } else { 
+                    writeln!(out, "Success."); };
             }
-            ("telnet", Mode::Conf) => {
-                let (enabled, args) = split_first_word(&args);
-                let mut cli_conf = futures::executor::block_on(crate::conf::get_cli_conf(&mut bh.clone()));
-                if enabled == "true" { cli_conf.telnet_enabled = true } else { cli_conf.telnet_enabled = false };
-                futures::executor::block_on(crate::conf::set_cli_conf(&mut bh.clone(), cli_conf));
+            // ("telnet", Mode::Conf) => {
+            //     let (enabled, args) = split_first_word(&args);
+            //     let mut cli_conf = futures::executor::block_on(crate::conf::get_cli_conf(&mut bh.clone()));
+            //     if enabled == "true" { cli_conf.telnet_enabled = true } else { cli_conf.telnet_enabled = false };
+            //     futures::executor::block_on(crate::conf::set_cli_conf(&mut bh.clone(), cli_conf));
 
-            }
-            (_,_) => { writeln!(out, "read input: {:?}", line)?; }
+            // }
+            (_,_) if cmd.len() > 0 => { writeln!(out, "Command not found: {}", line)?; }
+            (_,_) => {}
         }
     }
 
@@ -219,7 +223,7 @@ static CONF_COMMANDS: &[(&str, &str)] = &[
     ("list-commands",    "List command names"),
     ("history",          "Print history"),
     ("show",             "Display information"),
-    ("telnet",           "telnet [enabled:bool] <bind-address> <port>"),
+    // ("telnet",           "telnet [enabled:bool] <bind-address> <port>"),
     ("quit",             "Quit to command mode"),
 ];
 
