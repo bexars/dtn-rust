@@ -2,7 +2,7 @@ use log::*;
 use bp7::Bundle;
 use crate::cla::cla_handle::{ClaHandle, HandleId};
 use crate::bus::ModuleMsgEnum;
-use crate::router::RouterModule;
+use crate::system::SystemModules;
 use tokio::sync::mpsc::*;
 use tokio::sync::{RwLock, Mutex};
 use std::sync::Arc;
@@ -11,14 +11,14 @@ use msg_bus::{MsgBusHandle, Message};
 pub struct Processor {
     // pub adapters: Arc<RwLock<HashMap<HandleId, Arc<Mutex<ClaHandle>>>>>,
     // conf: Arc<RwLock<Configuration>>,
-    bus_handle: MsgBusHandle<RouterModule, ModuleMsgEnum>,
+    bus_handle: MsgBusHandle<SystemModules, ModuleMsgEnum>,
     rx: Arc<Mutex<Receiver<Message<ModuleMsgEnum>>>>,
 
 }
 
 impl Processor {
-    pub async fn new(mut bus_handle: MsgBusHandle<RouterModule, ModuleMsgEnum>) -> Self {
-        let rx = bus_handle.register(RouterModule::Processing).await.unwrap();
+    pub async fn new(mut bus_handle: MsgBusHandle<SystemModules, ModuleMsgEnum>) -> Self {
+        let rx = bus_handle.register(SystemModules::Processing).await.unwrap();
 
         Self {
             rx:  Arc::new(Mutex::new(rx)),

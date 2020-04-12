@@ -1,6 +1,6 @@
 use log::*;
 use crate::bus::ModuleMsgEnum;
-use crate::router::RouterModule;
+use crate::system::SystemModules;
 use msg_bus::{MsgBusHandle, Message};
 use serde::{Serialize, Deserialize};
 use tokio::sync::mpsc::Receiver;
@@ -24,15 +24,15 @@ impl Default for CliConfiguration {
 
 #[derive(Clone)]
 pub struct CliManager {
-    bus_handle: MsgBusHandle<RouterModule, ModuleMsgEnum>,
+    bus_handle: MsgBusHandle<SystemModules, ModuleMsgEnum>,
     rx: Arc<Mutex<Receiver<Message<ModuleMsgEnum>>>>,
     cli_conf: CliConfiguration,
     // telnet_handle: Option<telnet_service::TelnetService>,
 }
 
 impl CliManager {
-    pub async fn new(mut bus_handle: MsgBusHandle<RouterModule, ModuleMsgEnum>) -> Self {
-        let rx = bus_handle.register(RouterModule::CLI).await.unwrap();
+    pub async fn new(mut bus_handle: MsgBusHandle<SystemModules, ModuleMsgEnum>) -> Self {
+        let rx = bus_handle.register(SystemModules::CLI).await.unwrap();
         Self {
             rx:  Arc::new(Mutex::new(rx)),
             bus_handle,
@@ -57,7 +57,7 @@ impl CliManager {
 
 
     pub async fn start(self) { //  -> tokio::task::JoinHandle<()> {
-        // bus_tx.send(ModuleMsgEnum::MsgBus(BusMessage::SetTx(tx.clone(), RouterModule::CLI))).await.unwrap();
+        // bus_tx.send(ModuleMsgEnum::MsgBus(BusMessage::SetTx(tx.clone(), SystemModules::CLI))).await.unwrap();
         // let mut bus_handle = self.bus_handle.clone();
         debug!("In CliManager.start()");
 

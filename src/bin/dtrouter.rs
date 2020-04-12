@@ -1,4 +1,4 @@
-use dtn::router;
+use dtn::system;
 use clap::Clap;
 use log::{debug};
 
@@ -34,5 +34,5 @@ pub fn main() {
 
     
 
-    router::start(opts.conf_file);
+    system::start(opts.conf_file);
 }

@@ -11,11 +11,11 @@ use linefeed::complete::{Completer, Completion};
 // use linefeed::inputrc::parse_text;
 use linefeed::terminal::Terminal;
 use msg_bus::*;
-use crate::router::RouterModule;
+use crate::system::SystemModules;
 use crate::bus::ModuleMsgEnum;
-use crate::cla::ClaType;
+use crate::cla::{AdapterConfiguration, ClaConfiguration, ClaType};
 
-type BusHandle = MsgBusHandle<RouterModule, ModuleMsgEnum>;
+type BusHandle = MsgBusHandle<SystemModules, ModuleMsgEnum>;
 
 
 const HISTORY_FILE: &str = "linefeed.hst";
@@ -24,7 +24,7 @@ const HISTORY_FILE: &str = "linefeed.hst";
 enum Mode {
     Normal,
     Conf,
-    ConfCla(ClaType, String),
+    ConfCla(AdapterConfiguration),
 }
 
 
@@ -40,8 +40,6 @@ pub(super) fn start(file: Option<String>, bh: BusHandle) -> io::Result<()> {
     } else {
         Box::new(std::io::stdout())
     };
-
-    writeln!(out, "Hello World")?;
 
     let interface = if let Some(file) = file {
         // Interface::with_term("my-app", mortal::unix::OpenTerminalExt::from_path(file).map(linefeed::DefaultTerminal).unwrap()
@@ -64,7 +62,8 @@ pub(super) fn start(file: Option<String>, bh: BusHandle) -> io::Result<()> {
     writeln!(out, "")?;
 
     interface.set_completer(repeater);
-    interface.set_prompt("> ")?;  //TODO set a Hostname in conf
+    let mut nodename = futures::executor::block_on(crate::conf::get_nodename(&mut bh.clone()));
+    interface.set_prompt(&format!("{}> ", &nodename))?;  
 
     if let Err(e) = interface.load_history(HISTORY_FILE) {
         if e.kind() == io::ErrorKind::NotFound {
@@ -73,14 +72,21 @@ pub(super) fn start(file: Option<String>, bh: BusHandle) -> io::Result<()> {
             writeln!(out, "Could not load history file {}: {}", HISTORY_FILE, e)?;
         }
     }
+   
 
     while let ReadResult::Input(line) = interface.read_line().unwrap() {
         if !line.trim().is_empty() {
             interface.add_history_unique(line.clone());
         }
+        let mut no_flag = false;
         let mode_l = mode.clone();
-        let (cmd, args) = split_first_word(&line);
-
+        let (mut cmd, mut args) = split_first_word(&line);
+        if cmd == "no" { 
+            let (c,a) = split_first_word(&args); 
+            cmd = c;
+            args = a;
+            no_flag = true;
+        }
         match (cmd, mode_l) {
             ("help", Mode::Normal) => {
                 writeln!(out, "dtn commands:")?;
@@ -94,6 +100,153 @@ pub(super) fn start(file: Option<String>, bh: BusHandle) -> io::Result<()> {
                 for cmd in COMMANDS {
                     writeln!(out, "{}", cmd)?;
                 }
+            }
+            ("history", _) => {
+                let w = interface.lock_writer_erase()?;
+
+                for (i, entry) in w.history().enumerate() {
+                    writeln!(out, "{}: {}", i, entry)?;
+                }
+            }
+            ("save-history",_) => {
+                if let Err(e) = interface.save_history(HISTORY_FILE) {
+                    writeln!(out, "Could not save history file {}: {}", HISTORY_FILE, e)?;
+                } else {
+                    writeln!(out, "History saved to {}", HISTORY_FILE)?;
+                }
+            }
+            ("configuration", Mode::Normal) => {
+                interface.set_prompt(&format!("{}(conf)> ", &nodename))?;  
+                interface.set_completer(Arc::new(ConfCompleter));
+                mode = Mode::Conf;
+            }
+            ("cla", Mode::Conf) if no_flag => {
+                let (subcmd, mut name) = split_first_word(&args);
+                    if name == "" { name = subcmd; }
+                    futures::executor::block_on(crate::conf::del_cla_conf(&mut bh.clone(), name.to_string()));
+            }
+            ("cla", Mode::Conf) => {
+                let (subcmd, args) = split_first_word(&args);
+                let (name, args) = split_first_word(&args);
+                let conf = futures::executor::block_on(crate::conf::get_cla_conf(&mut bh.clone()));
+                let cla_conf = conf.adapters.get(name);
+                
+                match subcmd {
+                    "loopback" => {
+                        if let Some(cla_conf) = cla_conf {
+                            if cla_conf.cla_type == ClaType::LoopBack {
+                                mode = Mode::ConfCla(cla_conf.clone());
+                            } else {
+                                writeln!(out, "CLA {} is already defined, but not as loopback", name)?;
+                            }
+                        } else {
+                            mode = Mode::ConfCla(AdapterConfiguration {name: String::from(name), cla_type: ClaType::LoopBack, ..Default::default()});
+                        }
+                        interface.set_prompt(&format!("{} (conf-cla-loopback:{})> ", &nodename, name))?;
+                        interface.set_completer(Arc::new(ClaCompleter));
+                    }
+                    "stcp-listen" => {
+                        if let Some(cla_conf) = cla_conf {
+                            if let ClaType::StcpListener(_,_) = cla_conf.cla_type {
+                                mode = Mode::ConfCla(cla_conf.clone());
+                            } else {
+                                writeln!(out, "CLA {} is already defined, but not as stcp-listen", name)?;
+                            }
+                        } else {
+                            mode = Mode::ConfCla(AdapterConfiguration {name: String::from(name), cla_type: ClaType::StcpListener(String::from("0.0.0.0"),4556), ..Default::default()});
+                        }
+                        interface.set_prompt(&format!("{} (conf-cla-stcp-listen:{})> ", &nodename, args))?;
+                        interface.set_completer(Arc::new(ClaCompleter));
+                    }
+
+                    _ => {}
+                };
+            }
+            ("node", Mode::ConfCla(mut config)) => {
+                config.peernode = args.to_owned();
+                mode = Mode::ConfCla(config.clone());
+                futures::executor::block_on(crate::conf::set_cla_conf(&mut bh.clone(), config)).unwrap();
+            }
+            ("address", Mode::ConfCla(mut config)) => {
+                match config.cla_type {
+                    ClaType::StcpListener(_address, ip) => {
+                        config.cla_type = ClaType::StcpListener(args.to_string(), ip);  
+                    }
+                    ClaType::Stcp(_address, ip) => {
+                        config.cla_type = ClaType::Stcp(args.to_string(), ip);  
+                    }
+                    ClaType::StcpIp(_address, ip, domain) => {
+                        config.cla_type = ClaType::StcpIp(args.to_string(), ip, domain);  
+                    }
+                    _ => {}
+                }
+                mode = Mode::ConfCla(config);
+            }
+            ("port", Mode::ConfCla(mut config)) => {
+                match config.cla_type {
+                    ClaType::StcpListener(address, _port) => {
+                        config.cla_type = ClaType::StcpListener(address, args.parse().unwrap());  
+                    }
+                    ClaType::Stcp(address, _port) => {
+                        config.cla_type = ClaType::Stcp(address, args.parse().unwrap());  
+                    }
+                    ClaType::StcpIp(address, _port, domain) => {
+                        config.cla_type = ClaType::StcpIp(address, args.parse().unwrap(), domain);  
+                    }
+                    _ => {}
+                }
+                mode = Mode::ConfCla(config);
+            }
+
+
+
+            ("shutdown", Mode::ConfCla(mut config)) if no_flag => {
+                if config.shutdown {
+                    config.shutdown = false;
+                    futures::executor::block_on(crate::conf::set_cla_conf(&mut bh.clone(), config.clone())).unwrap();    
+                    mode = Mode::ConfCla(config);
+                }
+            }
+            ("shutdown", Mode::ConfCla(mut config)) => {
+                if !config.shutdown {
+                    config.shutdown = true;
+                    futures::executor::block_on(crate::conf::set_cla_conf(&mut bh.clone(), config.clone())).unwrap();    
+                    mode = Mode::ConfCla(config);
+                }
+            }
+
+            ("nodename", Mode::Conf) => {
+                nodename = args.to_string();
+                futures::executor::block_on(crate::conf::set_nodename(&mut bh.clone(), args.to_string())).unwrap();    
+            }
+            ("exit", m) => {
+                match m {
+                    Mode::Normal => break,
+                    Mode::Conf => { 
+                        interface.set_prompt(&format!("{}>",nodename))?;
+                        interface.set_completer(Arc::new(MainCompleter));
+                        mode = Mode::Normal; 
+                    },
+                    Mode::ConfCla(cla_conf) => {
+                        //TODO verify CLA 
+                        //TODO order the CLA list
+                        interface.set_prompt(&format!("{}(conf)>",nodename))?;
+                        interface.set_completer(Arc::new(ConfCompleter));
+                        futures::executor::block_on(crate::conf::set_cla_conf(&mut bh.clone(), cla_conf)).unwrap();
+                        mode = Mode::Conf; 
+                    },
+                } 
+            }
+            ("halt", Mode::Normal) => {
+                let _res = futures::executor::block_on(crate::system::halt(&mut bh.clone()));
+            }
+            ("save", Mode::Normal) => {
+                let file_name = if args.len() > 0 { Some(args.to_owned()) } else { None };
+                let res = futures::executor::block_on(crate::conf::save(&mut bh.clone(), file_name));
+                if let Err(e) = res {
+                    writeln!(out, "{}", e)?;
+                } else { 
+                    writeln!(out, "Success.")?; };
             }
             ("show", _) => {
                 let (subcmd, _args) = split_first_word(&args);
@@ -116,68 +269,6 @@ pub(super) fn start(file: Option<String>, bh: BusHandle) -> io::Result<()> {
 
                 }
             }
-            ("halt", Mode::Normal) => {
-                let _res = futures::executor::block_on(crate::router::halt(&mut bh.clone()));
-            }
-            ("history", _) => {
-                let w = interface.lock_writer_erase()?;
-
-                for (i, entry) in w.history().enumerate() {
-                    writeln!(out, "{}: {}", i, entry)?;
-                }
-            }
-            ("save-history",_) => {
-                if let Err(e) = interface.save_history(HISTORY_FILE) {
-                    writeln!(out, "Could not save history file {}: {}", HISTORY_FILE, e)?;
-                } else {
-                    writeln!(out, "History saved to {}", HISTORY_FILE)?;
-                }
-            }
-            ("configuration", Mode::Normal) => {
-                    interface.set_prompt("(conf)> ")?;
-                    interface.set_completer(Arc::new(ConfCompleter));
-                    mode = Mode::Conf;
-                }
-            ("cla", Mode::Conf) => {
-                let (subcmd, args) = split_first_word(&args);
-                match subcmd {
-                    "loopback" => {
-                        mode = Mode::ConfCla(ClaType::LoopBack, args.to_string());
-                        interface.set_prompt(&format!("(conf-cla-loopback:{}> ", args))?;
-                        interface.set_completer(Arc::new(ClaCompleter));
-                    }
-                    _ => {}
-                };
-            }
-            ("exit", m) => {
-                match m {
-                    Mode::Normal => break,
-                    Mode::Conf => { 
-                        interface.set_prompt(">")?;
-                        interface.set_completer(Arc::new(MainCompleter));
-                        mode = Mode::Normal; 
-                    },
-                    Mode::ConfCla(_,_) => {
-                        interface.set_prompt("(conf)>")?; 
-                        mode = Mode::Conf; 
-                    },
-                } 
-            }
-            ("save", Mode::Normal) => {
-                let file_name = if args.len() > 0 { Some(args.to_owned()) } else { None };
-                let res = futures::executor::block_on(crate::conf::save(&mut bh.clone(), file_name));
-                if let Err(e) = res {
-                    writeln!(out, "{}", e)?;
-                } else { 
-                    writeln!(out, "Success.")?; };
-            }
-            // ("telnet", Mode::Conf) => {
-            //     let (enabled, args) = split_first_word(&args);
-            //     let mut cli_conf = futures::executor::block_on(crate::conf::get_cli_conf(&mut bh.clone()));
-            //     if enabled == "true" { cli_conf.telnet_enabled = true } else { cli_conf.telnet_enabled = false };
-            //     futures::executor::block_on(crate::conf::set_cli_conf(&mut bh.clone(), cli_conf));
-
-            // }
             (_,_) if cmd.len() > 0 => { writeln!(out, "Command not found: {}", line)?; }
             (_,_) => {}
         }
@@ -217,6 +308,7 @@ static CONF_COMMANDS: &[(&str, &str)] = &[
     ("help",             "You're looking at it"),
     ("list-commands",    "List command names"),
     ("history",          "Print history"),
+    ("nodename",         "Sets the visual nodename.  No effect on operation"),
     ("show",             "Display information"),
     // ("telnet",           "telnet [enabled:bool] <bind-address> <port>"),
     ("quit",             "Quit to command mode"),
@@ -224,7 +316,7 @@ static CONF_COMMANDS: &[(&str, &str)] = &[
 
 static CLA_TYPES: &[(&str, &str)] = &[
     ("loopback",        "CLA that points back to this node"),
-    ("stcp-service",    "service that listens for stcp connections"),
+    ("stcp-listen",    "service that listens for stcp connections"),
     ("stcp",            "CLA that sends to a specific node via stcp"),
     ("stcp-ip",         "CLA that sends to a node looked up by dtn srv records"),
 ];
