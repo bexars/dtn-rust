@@ -49,7 +49,14 @@ impl ConfManager {
     pub async fn new(config_file: String, mut bus_handle: MsgBusHandle<RouterModule, ModuleMsgEnum>) -> Self {
         let rx = bus_handle.register(RouterModule::Configuration).await.unwrap();
         let config_file = PathBuf::from(config_file);
-        let config = Arc::new(RwLock::new(Configuration::load_file(&config_file).unwrap()));
+        let config = Configuration::load_file(&config_file);
+        let config: Configuration = match config {
+            Err(e) => {
+                eprintln!("Unable to load configuration: {:?}", e);
+                Default::default() }
+            Ok(conf) => conf
+        };
+        let config = Arc::new(RwLock::new(config));
         Self {
             config,
             config_file,
@@ -85,14 +92,20 @@ impl ConfManager {
                             rcpt.send(ModuleMsgEnum::MsgOk("".to_string()));
                         },
                         ConfMessage::Save(file_name) => {
-                            if let Some(file_name) = file_name {
-                                let pb = PathBuf::from(file_name);
-                                self.config.read().await.store_file(&pb);
-                                rcpt.send(ModuleMsgEnum::MsgOk("".to_string()));   
-                            } else {
-                                self.config.read().await.store();
-                                rcpt.send(ModuleMsgEnum::MsgOk("".to_string()));
+                            async fn run(config: &Arc<RwLock<Configuration>>, file_name: Option<String>) -> Result<(), FondantError> {
+                                if let Some(file_name) = file_name {
+                                    let pb = PathBuf::from(file_name);
+                                    config.read().await.store_file(&pb)?;
+                                } else {
+                                    config.read().await.store()?;
+                                }
+                                Ok(())
                             }
+                            if let Err(e) = run(&self.config, file_name).await {
+                                rcpt.send(ModuleMsgEnum::MsgErr(format!("Error saving: {:?}",e).to_string())).unwrap();
+                            } else {
+                                rcpt.send(ModuleMsgEnum::MsgOk("".to_string())).unwrap();
+                            };
                         }
                         _ => {},
                     };
