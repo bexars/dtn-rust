@@ -55,7 +55,7 @@ impl ClaManager {
     
         while let Some(msg) = rx.lock().await.recv().await {
             // Listen for updates from CLAs
-            debug!("Received msg: {:?}", msg);
+            // debug!("Received msg: {:?}", msg);
             match msg {
                 Message::Shutdown => { 
                     debug!("Received Halt");

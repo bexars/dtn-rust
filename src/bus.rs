@@ -1,5 +1,6 @@
+use crate::system::SystemModules;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub enum ModuleMsgEnum {
     MsgProcessing,   
     MsgClaManager,   
@@ -7,7 +8,7 @@ pub enum ModuleMsgEnum {
     MsgLogging,      
     MsgStorage,      
     MsgAppAgent,     
-    MsgRouting,      
+    MsgRouting(crate::routing::RoutingMessage),  // not for actual bundles      
     MsgConf(crate::conf::ConfMessage),
     MsgSystem(crate::system::SystemMessage),
     ShutdownNow,

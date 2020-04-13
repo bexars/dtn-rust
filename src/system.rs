@@ -5,6 +5,7 @@ use crate::bus::ModuleMsgEnum;
 use crate::conf;
 use crate::cla::cla_manager::ClaManager;
 use crate::processor;
+use crate::routing;
 use strum_macros::*;
 use msg_bus::{MsgBus, MsgBusHandle};
 use msg_bus::Message::*;    
@@ -13,7 +14,7 @@ use msg_bus::Message::*;
 
 // pub mod processor;
 
-type BusHandle = MsgBusHandle<SystemModules, ModuleMsgEnum>;
+pub type BusHandle = MsgBusHandle<SystemModules, ModuleMsgEnum>;
 
 
 pub struct CmdLineOpts {
@@ -57,11 +58,13 @@ pub async fn start(conf_file: String) {
     let mut proc_mgr = processor::Processor::new(bus_handle.clone()).await;
     let mut cla_mgr = ClaManager::new(bus_handle.clone()).await;
     let cli_mgr = cli::CliManager::new(bus_handle.clone()).await;
+    let mut router = routing::router::Router::new(bus_handle.clone()).await;
 
     let _han_conf = task::spawn(async move { conf_mgr.start().await; });
     let _han_proc = task::spawn(async move { proc_mgr.start().await; });
     let _han_clam = task::spawn(async move { cla_mgr.start().await; });
     let _han_clim = task::spawn(async move { cli_mgr.start().await; });
+    let _han_rout = task::spawn(async move { router.start().await; });
 
     //    let mut processor = Processor::new();        
 //    task::spawn_blocking(|| {cli::start()});
@@ -73,7 +76,9 @@ pub async fn start(conf_file: String) {
 //     info!("All threads shut down.");
     // tokio::join!(han_clim);    
 
-    trace!("About to enter router loop");
+
+
+    trace!("About to enter system control  loop");
     while let Some(msg) = rx.recv().await {
         match msg {
             Message(ModuleMsgEnum::MsgSystem(SystemMessage::ShutdownRequested)) => {

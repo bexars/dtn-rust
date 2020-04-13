@@ -1,25 +1,42 @@
 use crate::cla::cla_handle::ClaHandle;
 use crate::cla::cla_handle::HandleId;
+use tokio::sync::mpsc::*;
 use std::fmt;
 
+pub mod router;
+
+#[derive(Debug, Clone)]
+pub enum RoutingMessage {
+    AddRoute(Route),
+    DropRoute(Route),
+    AddClaHandle(HandleId, Sender<MetaBundle>),
+    DropClaHandle(HandleId),
+    DataRouterHandle(Sender<MetaBundle>),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct MetaBundle {
+    bundle: bp7::bundle::Bundle,
+    dest: NodeRoute,
+    //arrival
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum RouteType {
-    Loopback,  // Attached to the current node
-    IpDns(String),     // Looked up via SRV/A/AAAA records in DNS.  Must start with ip.<geo>  ex. ip.earth
-    Ip(String, u16),        // Hardcode DNS or IP address and port
+    ConvLayer(HandleId),
     Node(String),      // Recursive lookup another node route
-    Bib(String),       // Bundle in Bundle routing  (mimic GRE)
-    Broadcast,  // For bundles that are broadcast on an interface to any listeners
+    // Bib(String),       // Bundle in Bundle routing  (mimic GRE)
+    // Broadcast,  // For bundles that are broadcast on an interface to any listeners
 
 }
 
-
-
+#[derive(Debug, Clone, PartialEq)]
 pub struct Route {
     dest: NodeRoute,
     nexthop: RouteType,
-    interface: Option<HandleId>
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct NodeRoute {
     parts: Vec<String>,
 }
@@ -45,7 +62,16 @@ impl From<&str> for NodeRoute {
             parts,
         }
     }
-} 
+}
+
+impl From<bp7::bundle::Bundle> for NodeRoute {
+    fn from(bun: bp7::bundle::Bundle) -> Self {
+        let node = if let Some(n) = bun.primary.destination.node() {
+            n
+        } else { "".to_string() };
+        return NodeRoute::from(&*node);
+    }
+}
 
 impl fmt::Display for NodeRoute {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

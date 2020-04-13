@@ -35,7 +35,7 @@ impl Processor {
                 // Listen for updates from CLAs
                 match msg {
                     Message::Shutdown => { break; },
-                    _ => { debug!("Unknown msg: {:?}", msg); },
+                    _ => {},
                 };
             
                 // tokio::spawn(async move {
