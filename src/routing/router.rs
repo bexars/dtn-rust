@@ -41,6 +41,27 @@ impl RouteTableEntry {
             self.kids.push(new_rte); 
         }
     }
+
+    pub fn lookup(&self, lookup: &NodeRoute) -> Option<HandleId> {
+        match self.find(lookup) {
+            RouteType::ConvLayer(id) => { return Some(id); },
+            _ => { return None },
+        }
+        
+    }
+
+    pub fn find(&self, lookup: &NodeRoute) -> RouteType {
+        let i = self.kids.iter().filter(|kid| kid.route.dest.contains(&lookup)).next();
+        match i {
+            Some(i) => { 
+                let res = i.find(lookup);
+                match res {
+                RouteType::Null => { return i.route.nexthop.clone(); },
+                _ => { return res; },
+            }}
+            None => { return RouteType::Null }
+        }
+    }
 }
 
 pub struct Router {
@@ -49,7 +70,7 @@ pub struct Router {
     router_handle:   Sender<MetaBundle>,
     route_receiver: Arc<Mutex<Receiver<MetaBundle>>>,
     cla_handles:    Arc<RwLock<HashMap<HandleId, Sender<MetaBundle>>>>,
-    route_table:    RouteTableEntry,
+    route_table:    Arc<RwLock<RouteTableEntry>>,
 
 }
 
@@ -75,7 +96,7 @@ impl Router {
             router_handle:   rt_tx,
             route_receiver: Arc::new(Mutex::new(rt_rx)),
             cla_handles:    Arc::new(RwLock::new(HashMap::new())),
-            route_table:    table_entry,
+            route_table:    Arc::new(RwLock::new(table_entry)),
         }
     }
 
@@ -86,7 +107,7 @@ impl Router {
         let bus_handle = self.bus_handle.clone();
         let (mut tx_control, rx_control) = channel::<()>(1);
 
-        tokio::task::spawn(Router::route_loop(self.route_receiver.clone(), rx_control));
+        tokio::task::spawn(Router::route_loop(self.route_receiver.clone(), self.cla_handles.clone(), self.route_table.clone(), rx_control));
 
         info!("Starting route control loop");
         while let Some(msg) = rx.lock().await.recv().await {
@@ -120,7 +141,7 @@ impl Router {
                         match msg {
                             AddRoute(route) => { 
                                 debug!("Adding route {:?}", route);
-                                self.route_table.add(route); }
+                                self.route_table.write().await.add(route); }
                             _ => {}
                         }
                     }
@@ -133,18 +154,38 @@ impl Router {
         }; // end While
     }
 
-    async fn route_loop(rx: Arc<Mutex<Receiver<MetaBundle>>>, mut rx_control: Receiver<()> ) {
+    async fn route_loop(rx: Arc<Mutex<Receiver<MetaBundle>>>,     
+        cla_handles:    Arc<RwLock<HashMap<HandleId, Sender<MetaBundle>>>>,
+        route_table:    Arc<RwLock<RouteTableEntry>>, 
+        mut rx_control: Receiver<()> ) {
         let mut rx = rx.lock().await;  // take the lock forever!!
         info!("Starting routing");
         loop {
             let bundle = tokio::select! {
-                b = rx.recv() => b,
+                Some(b) = rx.recv() => b,
                 _ = rx_control.recv() => {
                     info!("Received shutdown in routing loop");
                     break;
                 },
             };
-            
+            debug!("Received Bundle");
+
+            let cla_id = route_table.read().await.lookup(&bundle.dest);
+            let cla_id = match cla_id {
+                None => { 
+                    debug!("Only Null route found. Dropping");
+                    continue;
+                },
+                Some(cla_id) => { cla_id },
+            };
+            let cla_handles = cla_handles.read().await;
+            let tx = cla_handles.get(&cla_id);
+            let mut tx = match tx {
+                None => { warn!("CLA not in lookup table.  Dropping Bundle"); continue; },
+                Some(tx) => { tx },
+            };
+            tx.clone().send(bundle).await;
+
 
         
 
@@ -172,7 +213,7 @@ impl Router {
             };
         };
         
-        let rt = &self.route_table;
+        let rt = &self.route_table.write().await;
         let mut out = String::new();
         let mut indent = String::new();
         fmt_parent(&rt, &mut out, indent);

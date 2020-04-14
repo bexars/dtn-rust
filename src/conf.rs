@@ -11,6 +11,7 @@ use crate::bus::ModuleMsgEnum;
 use crate::cla::{ClaConfiguration, AdapterConfiguration};
 use crate::cli::CliConfiguration;
 
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum ConfMessage {
     ConfigUpdated(SystemModules, Configuration),  // Try to be smart and tell which part of the config changed
@@ -32,7 +33,7 @@ pub enum ConfMessage {
 
 
 #[derive(Configure, Serialize, Deserialize, Default, Debug, Clone, PartialEq)]
-#[config_file = "config.toml"]
+#[config_file = "config.json"]
 pub struct Configuration {
     pub nodename: String,
     pub local_eid: EndpointID,
@@ -51,7 +52,7 @@ pub struct ConfManager {
 type BusHandle = MsgBusHandle<SystemModules, ModuleMsgEnum>;
 
 impl ConfManager {
-    pub async fn new(config_file: String, mut bus_handle: MsgBusHandle<SystemModules, ModuleMsgEnum>) -> Self {
+    pub async fn new(config_file: PathBuf, mut bus_handle: MsgBusHandle<SystemModules, ModuleMsgEnum>) -> Self {
         let rx = bus_handle.register(SystemModules::Configuration).await.unwrap();
         let config_file = PathBuf::from(config_file);
         let config = Configuration::load_file(&config_file);

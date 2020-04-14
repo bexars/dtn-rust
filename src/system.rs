@@ -9,6 +9,7 @@ use crate::routing;
 use strum_macros::*;
 use msg_bus::{MsgBus, MsgBusHandle};
 use msg_bus::Message::*;    
+use std::path::PathBuf;
 
 // use std::path::PathBuf;
 
@@ -29,7 +30,8 @@ pub enum SystemMessage {
 #[derive(EnumIter, Debug, PartialEq, Eq, Hash, Clone)]
 pub enum SystemModules {
     Processing,      // Actually reads the Bundle and decides what to do with it
-    ClaManager,      // Manages the various CLA, stats, up/down
+    ClaManager,      // Manages the various CLA creation/deletion
+    Cla(usize),      // Each CLA 
     CLI,             // User interface
     Logging,         // Catches and distributes all logging
     Storage,         // Bundles being written to disk
@@ -38,6 +40,7 @@ pub enum SystemModules {
     Configuration,   // Reads, stores, updates the config.  Let's other modules know
     Bus,             // The messaging backbone
     System,          // System to control the system
+    
 }
 
 #[tokio::main (core_threads=2)]
@@ -53,7 +56,7 @@ pub async fn start(conf_file: String) {
     // let (mut msg_bus_old, bus_tx, bus_rx) = bus::Bus::new();
     // let han_bus = msg_bus_old.start(bus_rx);
 
-    let mut conf_mgr = conf::ConfManager::new(conf_file, bus_handle.clone()).await;
+    let mut conf_mgr = conf::ConfManager::new(PathBuf::from(conf_file), bus_handle.clone()).await;
     // Storage here
     let mut proc_mgr = processor::Processor::new(bus_handle.clone()).await;
     let mut cla_mgr = ClaManager::new(bus_handle.clone()).await;

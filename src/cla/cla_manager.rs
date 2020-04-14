@@ -20,11 +20,11 @@ use msg_bus::{MsgBusHandle, Message};
 
 
 pub struct ClaManager {
-    pub adapters: Arc<RwLock<HashMap<HandleId, Arc<RwLock<ClaHandle>>>>>,
+    pub adapters: Arc<RwLock<HashMap<HandleId, tokio::task::JoinHandle<()>>>>,
     // conf: Arc<RwLock<Configuration>>,
     bus_handle: MsgBusHandle<SystemModules, ModuleMsgEnum>,
     clam_rx: Arc<Mutex<Receiver<Message<ModuleMsgEnum>>>>,
-
+    next_handle_id: HandleId,
 }
 
 impl ClaManager {
@@ -35,43 +35,47 @@ impl ClaManager {
         Self {
             clam_rx:  Arc::new(Mutex::new(rx)),
             bus_handle,
-            adapters: Arc::new(RwLock::new(HashMap::<HandleId, Arc<RwLock<ClaHandle>>>::new())),
+            adapters: Arc::new(RwLock::new(HashMap::<HandleId, tokio::task::JoinHandle<()>>::new())),
+            next_handle_id: 0,
         }
     }
-    fn init_cla(&self, i: HandleId, name: String, cla_conf: AdapterConfiguration) -> Arc<RwLock<ClaHandle>> {
-        let (rw, cla) = match cla_conf.cla_type {
-            ClaType::LoopBack => { (ClaRW::RW, loopback::LoopbackCLA::new(cla_conf.clone(), self.bus_handle.clone())) },
-            _ => { (ClaRW::RW, loopback::LoopbackCLA::new(cla_conf.clone(), self.bus_handle.clone())) },
+    fn init_cla(&self, i: HandleId, name: String, cla_conf: AdapterConfiguration) -> tokio::task::JoinHandle<()> {
+        let (rw, cla):(ClaRW, Box<dyn ClaTrait>) = match cla_conf.cla_type.clone() {
+            ClaType::LoopBack => { (ClaRW::RW, Box::new(loopback::LoopbackCLA::new(cla_conf.clone(), self.bus_handle.clone()))) },
+            ClaType::StcpListener(address, port) => { 
+                (ClaRW::R, Box::new(stcp_server::StcpServer::new(address, port))) },
+            _ => { (ClaRW::RW, Box::new(loopback::LoopbackCLA::new(cla_conf.clone(), self.bus_handle.clone()))) },
         };
-        let handle = Arc::new(RwLock::new(ClaHandle::new(i, 
+        let mut handle = ClaHandle::new(i, 
                             name.clone(),
                             self.bus_handle.clone(), 
                             cla_conf.clone(), 
                             rw, 
-                            Arc::new(RwLock::new(Box::new(cla))),
-        )));
-        handle
-
+                            Arc::new(RwLock::new(cla)));
+        
+        let h = tokio::task::spawn(async move { handle.start().await; });
+        h
     }
 
-    async fn start_clas(&self) {
-        debug!("start_clas");
-        let mut adapters = self.adapters.write().await;
-        for (_, h) in adapters.iter_mut() {
-            ClaHandle::start(&h).await;
-        }
-    }
+    // async fn start_clas(&self) {
+    //     debug!("start_clas");
+    //     let mut adapters = self.adapters.write().await;
+    //     for (_, h) in adapters.iter_mut() {
+    //         h.start().await;
+    //     }
+    // }
 
-    async fn init_clas(&mut self) {
+    async fn start_clas(&mut self) {
         let conf = crate::conf::get_cla_conf(&mut self.bus_handle.clone()).await;
         let mut adapters = self.adapters.write().await;
-        let mut i: HandleId = 0;
+        
         debug!("init_clas");
 
         for (name, cla_conf) in conf.adapters {
-            let h = self.init_cla(i, name.clone(), cla_conf.clone());
-            adapters.insert(i, h);
-            i += 1;
+            let h = self.init_cla(self.next_handle_id, name.clone(), cla_conf.clone());
+            
+            adapters.insert(self.next_handle_id, h);
+            self.next_handle_id += 1;
         };
     }
 
@@ -79,7 +83,6 @@ impl ClaManager {
         let mut bus_handle = self.bus_handle.clone();
 
         // Instantiate all the CLAs
-        self.init_clas().await;
         self.start_clas().await;
     
         let mut rx = self.clam_rx.lock().await;

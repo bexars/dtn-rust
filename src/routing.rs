@@ -17,8 +17,8 @@ pub enum RoutingMessage {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct MetaBundle {
-    bundle: bp7::bundle::Bundle,
-    dest: NodeRoute,
+    pub bundle: bp7::bundle::Bundle,
+    pub dest: NodeRoute,
     //arrival
 }
 
@@ -78,8 +78,21 @@ impl From<&str> for NodeRoute {
     }
 }
 
-impl From<bp7::bundle::Bundle> for NodeRoute {
-    fn from(bun: bp7::bundle::Bundle) -> Self {
+impl From<&String> for NodeRoute {
+    fn from(item: &String) -> Self {
+        let parts = if item.len() > 0 {
+            item.rsplit(".").map(String::from).collect()
+        } else {
+            Vec::new()
+        };
+        Self {
+            parts,
+        }
+    }
+}
+
+impl From<&bp7::bundle::Bundle> for NodeRoute {
+    fn from(bun: &bp7::bundle::Bundle) -> Self {
         let node = if let Some(n) = bun.primary.destination.node() {
             n
         } else { "".to_string() };

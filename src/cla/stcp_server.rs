@@ -6,16 +6,16 @@ use bp7::Bundle;
 use bp7::ByteBuffer;
 use std::convert::TryFrom;
 use crate::cla::cla_handle::ClaHandle;
-use crate::cla::{ClaType, ClaRW};
+use crate::cla::{ClaType, ClaRW, ClaTrait, ClaBundleStatus};
 use tokio::sync::{Mutex, RwLock};
 use std::sync::{Arc};
-use std::sync::mpsc::Sender;
-use crate::cla::cla_handle::HandleId;
+use tokio::sync::mpsc::Sender;
+use crate::routing::MetaBundle;
 
 
 pub struct StcpServer {
+    address: String,
     port: u16,
-    cla_handle: Arc<RwLock<ClaHandle>>,
 }
 
 
@@ -25,26 +25,26 @@ impl StcpServer {
     // pub const CLA_TYPE: ClaType = ClaType::StcpListener;
     pub const CLA_RW: ClaRW = ClaRW::R;
 
-    pub fn new(cla_handle: Arc<RwLock<ClaHandle>>, port: u16) -> StcpServer {
+    pub fn new(address: String, port: u16 ) -> StcpServer {
         StcpServer {
+            address,
             port,
-            cla_handle,            
         }
         
     }
 
+}
 
 
+impl ClaTrait for StcpServer {
 
-
-    pub async fn start_old(&self, tx: Sender<(HandleId, Bundle)>) {
+    fn start(&self, tx: Sender<ClaBundleStatus>) {
         
 
         // start listening!
-        let addr = format!(":::{}", self.port);
+        let addr = format!("{}:{}", self.address, self.port);
 //        println!("Starting STCP listener: {}", addr);
         let addr2 = addr.clone();
-        let handle_id = self.cla_handle.read().await.id;
         let tx = tx.clone();
         let server = {
             async move {
@@ -52,7 +52,7 @@ impl StcpServer {
                 let mut incoming = listener.incoming();
                 while let Some(conn) = incoming.next().await {
                     // let cla_handle = self.cla_handle.clone();
-                    let tx = tx.clone();
+                    let mut tx = tx.clone();
                     match conn {
                         Err(e) => eprintln!("stcp accept failed: {:?}", e),
                         Ok(mut sock) => {
@@ -91,7 +91,7 @@ impl StcpServer {
                                 let buf = ByteBuffer::from(buf);
                                 let bundle = Bundle::try_from(buf).unwrap();
                                 println!("STCP received bundle, sending to processing");
-                                tx.send((handle_id, bundle)).unwrap();
+                                tx.send(ClaBundleStatus::New(bundle)).await;
 
                             });
                             
@@ -106,4 +106,7 @@ impl StcpServer {
         println!("stcp service running on {}", addr2);
 
     }
+
+    fn stop(&self) { unimplemented!(); }
+    fn send(&self, bundle: MetaBundle) { unimplemented!(); }
 }

@@ -372,7 +372,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "fondant"
 version = "0.1.1"
-source = "git+https://github.com/bexars/fondant.git#79f1ea075d0d3ad3514da7120faa1c3c5fd17bfc"
+source = "git+https://github.com/bexars/fondant.git#743194f7dc9d8d8595b3d6c7898917ce9e149032"
 dependencies = [
  "fondant_deps 0.1.0 (git+https://github.com/bexars/fondant.git)",
  "fondant_derive 0.1.1 (git+https://github.com/bexars/fondant.git)",
@@ -381,7 +381,7 @@ dependencies = [
 [[package]]
 name = "fondant_deps"
 version = "0.1.0"
-source = "git+https://github.com/bexars/fondant.git#79f1ea075d0d3ad3514da7120faa1c3c5fd17bfc"
+source = "git+https://github.com/bexars/fondant.git#743194f7dc9d8d8595b3d6c7898917ce9e149032"
 dependencies = [
  "directories 2.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.106 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -394,7 +394,7 @@ dependencies = [
 [[package]]
 name = "fondant_derive"
 version = "0.1.1"
-source = "git+https://github.com/bexars/fondant.git#79f1ea075d0d3ad3514da7120faa1c3c5fd17bfc"
+source = "git+https://github.com/bexars/fondant.git#743194f7dc9d8d8595b3d6c7898917ce9e149032"
 dependencies = [
  "proc-macro2 1.0.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "quote 1.0.3 (registry+https://github.com/rust-lang/crates.io-index)",

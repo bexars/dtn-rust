@@ -1,9 +1,11 @@
 use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};    
-use std::sync::{Arc, RwLock};
+use tokio::sync::{RwLock};
+use std::sync::Arc;
 use async_trait::async_trait;
 use crate::routing::MetaBundle;
+use tokio::sync::mpsc::Sender;
 
 
 pub mod cla_handle;
@@ -12,17 +14,24 @@ pub mod stcp_server;
 pub mod loopback;
 
 
+
+pub enum ClaBundleStatus {
+    Failure(MetaBundle),
+    Success(MetaBundle),
+    New(bp7::Bundle),
+}
+
 pub trait ClaTrait: Send + Sync {
-    fn send(&self, bundle: Arc<RwLock<MetaBundle>>);
-    fn start(&self);
+    fn send(&self, bundle: MetaBundle);
+    fn start(&self, tx: Sender<ClaBundleStatus>);
     // async fn accept() -> Arc<MetaBundle>;
-
+    fn stop(&self);
 }
 
-pub trait ClaHandleTrait: Send + Sync {
-    /// The Handle queues the bundle and promises to return quickly
-    fn process_bundle(&self, bundle: bp7::Bundle);
-}
+// pub trait ClaHandleTrait: Send + Sync {
+//     /// The Handle queues the bundle and promises to return quickly
+//     fn process_bundle(&self, bundle: bp7::Bundle);
+// }
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum ClaRW {

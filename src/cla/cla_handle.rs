@@ -3,7 +3,7 @@ use std::sync::{Arc};
 use crate::processor::Processor;
 use super::ClaRW;
 use super::ClaType;
-use super::{ClaTrait, ClaHandleTrait};
+use super::{ClaTrait, ClaBundleStatus};
 use crate::system::SystemModules;
 use crate::routing::*;
 use tokio::sync::mpsc::{Sender,Receiver};
@@ -57,35 +57,56 @@ impl ClaHandle {
     }
 
 
-    pub async fn start(mut self_handle:  &Arc<RwLock<ClaHandle>>) {
-        let self_handle = self_handle.clone();
+    pub async fn start(&mut self) {
+        // let self_handle = self_handle.clone();
  
-        tokio::task::spawn(async move {
-            let mut self_handle = &mut self_handle.write().await;
-            let routing_handle = crate::routing::router::add_cla_handle(&mut self_handle.bus_handle.clone(), self_handle.id, self_handle.tx.clone()).await;
-            self_handle.router_handle = Some(routing_handle);        
 
-            match &self_handle.rw {
-                ClaRW::RW | ClaRW::W => {
-                    // send the route to the router
-                    let rte = Route { 
-                        dest: NodeRoute::from(&*self_handle.cla_config.peernode), 
-                        nexthop: RouteType::ConvLayer(self_handle.id),
-                    };
-                    router::add_route(&mut self_handle.bus_handle, rte).await;
-                }
-                _ => {}
-            };
-            let rx = &self_handle.rx;
-            self_handle.cla.write().await.start();
-            loop {
-                let bundle = self_handle.rx.recv().await;
+        let mut routing_handle = crate::routing::router::add_cla_handle(&mut self.bus_handle.clone(), self.id, self.tx.clone()).await;
+        self.router_handle = Some(routing_handle.clone());        
+
+        match &self.rw {
+            ClaRW::RW | ClaRW::W => {
+                // send the route to the router
+                let rte = Route { 
+                    dest: NodeRoute::from(&self.cla_config.peernode), 
+                    nexthop: RouteType::ConvLayer(self.id),
+                };
+                router::add_route(&mut self.bus_handle, rte).await;
             }
-        });
+            _ => {}
+        };
+        let mut rx = &mut self.rx;
+
+        let (mut cla_tx, mut cla_rx) = tokio::sync::mpsc::channel::<ClaBundleStatus>(50);
+
+        self.cla.write().await.start(cla_tx);
+        loop {
+            let bundle = tokio::select! {
+                Some(router_bun) = rx.recv() => { // Received bundle from Router 
+                    self.cla.read().await.send(router_bun);
+                },
+                Some(cla_bun) = cla_rx.recv() => { // Received bundle from CLA
+                    match cla_bun {
+                        ClaBundleStatus::New(bundle) => {
+                            debug!("Received Bundle");
+                            let metabun = MetaBundle{ 
+                                dest: NodeRoute::from(&bundle),
+                                bundle,  
+                            };
+                            routing_handle.send(metabun).await;
+                        }
+                        _ => {},  // TODO Implement Failure, Success
+                    };                      
+
+                },
+            };
+
+        }
     }
 
-    pub async fn process_bundle(metabundle: Arc<MetaBundle>) {
-        // update stats
-        // send to the router
-    }
+    // pub async fn process_bundle(metabundle: Arc<MetaBundle>) {
+    //     // update stats
+    //     // send to the router
+    
+    // }
 }
