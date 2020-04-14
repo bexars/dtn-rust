@@ -28,6 +28,10 @@ impl ClaTrait for LoopbackCLA {
     }
     fn send(&self, mbun: MetaBundle) {
         debug!("Loopback {} received a bundle", self.config.name );
+        println!("Bundle from: {}", mbun.bundle.primary.source);
+        if let Some(payload) = mbun.bundle.payload() {
+            println!("{}", String::from_utf8(payload.to_vec()).unwrap());
+        }
         // TODO Send bundle to the local agent
     }
 

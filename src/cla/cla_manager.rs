@@ -44,6 +44,8 @@ impl ClaManager {
             ClaType::LoopBack => { (ClaRW::RW, Box::new(loopback::LoopbackCLA::new(cla_conf.clone(), self.bus_handle.clone()))) },
             ClaType::StcpListener(address, port) => { 
                 (ClaRW::R, Box::new(stcp_server::StcpServer::new(address, port))) },
+            ClaType::Stcp(address, port) => { 
+                (ClaRW::W, Box::new(stcp::Stcp::new(address, port))) },
             _ => { (ClaRW::RW, Box::new(loopback::LoopbackCLA::new(cla_conf.clone(), self.bus_handle.clone()))) },
         };
         let mut handle = ClaHandle::new(i, 

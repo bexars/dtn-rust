@@ -15,6 +15,8 @@ use std::net::TcpStream;
 struct Opts {
     #[clap(short = "d", long = "dest", help = "Set destination EID")]
     dest: Option<String>,
+    #[clap(short = "s", long = "source", help = "Set source EID")]
+    source: Option<String>,
     #[clap(short = "l", long = "listen", help = "SSP to listen on ( omit dtn: from EID)")]
     listen: Option<String>,
     #[clap(long = "host", help = "IP address or hostname of dtn node", default_value = "localhost" )]
@@ -59,6 +61,8 @@ fn send_bundle(opts: &Opts) {
     let mut bundle: Bundle = Bundle::new(primary, canonicals);
 
     bundle.primary.destination = EndpointID::with_dtn(& opts.dest.as_ref().unwrap()).unwrap();
+    bundle.primary.source = EndpointID::with_dtn(& opts.source.as_ref().unwrap()).unwrap();
+
     let host_port = format!("{}:{}", &opts.host, &opts.port);
     let mut stream: TcpStream = match TcpStream::connect(host_port) {
         Ok(x) => x,

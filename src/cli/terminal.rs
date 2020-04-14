@@ -159,6 +159,20 @@ pub(super) fn start(file: Option<String>, bh: BusHandle) -> io::Result<()> {
                         }
                         interface.set_prompt(&format!("{} (conf-cla-stcp-listen:{})> ", &nodename, args))?;
                         interface.set_completer(Arc::new(ClaCompleter));
+                    },
+                    "stcp" => {
+                        if let Some(cla_conf) = cla_conf {
+                            if let ClaType::Stcp(_,_) = cla_conf.cla_type {
+                                mode = Mode::ConfCla(cla_conf.clone());
+                            } else {
+                                writeln!(out, "CLA {} is already defined, but not as stcp", name)?;
+                            }
+                        } else {
+                            mode = Mode::ConfCla(AdapterConfiguration {name: String::from(name), cla_type: ClaType::Stcp(String::from("0.0.0.0"),4556), ..Default::default()});
+                        }
+                        interface.set_prompt(&format!("{} (conf-cla-stcp:{})> ", &nodename, args))?;
+                        interface.set_completer(Arc::new(ClaCompleter));
+
                     }
 
                     _ => {}
