@@ -9,3 +9,6 @@ linefeed.hst
 now.conf
 tada.conf
 *.conf
+*.json
+*.gz
+conf test.json
