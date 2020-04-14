@@ -43,7 +43,9 @@ pub(super) fn start(file: Option<String>, bh: BusHandle) -> io::Result<()> {
 
     let interface = if let Some(file) = file {
         // Interface::with_term("my-app", mortal::unix::OpenTerminalExt::from_path(file).map(linefeed::DefaultTerminal).unwrap()
-        Interface::with_term("my-app", linefeed::DefaultTerminal::new_path(file).unwrap()).unwrap()
+        // Interface::with_term("my-app", linefeed::DefaultTerminal::new_path(file).unwrap()).unwrap()
+        Interface::new("my-application").unwrap()
+
     } else {
         Interface::new("my-application").unwrap()
 
