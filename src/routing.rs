@@ -12,6 +12,7 @@ pub enum RoutingMessage {
     AddClaHandle(HandleId, Sender<MetaBundle>),
     DropClaHandle(HandleId),
     DataRouterHandle(Sender<MetaBundle>),
+    GetRoutesString,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -27,13 +28,26 @@ pub enum RouteType {
     Node(String),      // Recursive lookup another node route
     // Bib(String),       // Bundle in Bundle routing  (mimic GRE)
     // Broadcast,  // For bundles that are broadcast on an interface to any listeners
-
+    Null,
 }
+
+impl fmt::Display for RouteType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            RouteType::ConvLayer(hid) =>   { write!(f, "CLA:{}", hid) },
+            RouteType::Node(s) =>          { write!(f, "Node: {}", s) },
+            RouteType::Null =>             { write!(f, "Null") },
+            _ =>                           { write!(f, "UPDATE to_string for RouteType") },
+        }
+    }
+}
+
+
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Route {
-    dest: NodeRoute,
-    nexthop: RouteType,
+    pub dest: NodeRoute,
+    pub nexthop: RouteType,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -42,7 +56,7 @@ pub struct NodeRoute {
 }
 
 impl NodeRoute {
-    pub fn contains(&self, rhs: NodeRoute) -> bool {
+    pub fn contains(&self, rhs: &NodeRoute) -> bool {
         if self.parts.len() > rhs.parts.len() { return false; };
         for (s, r) in self.parts.iter().zip(rhs.parts.iter()) {
             if s != r { return false };
@@ -98,7 +112,7 @@ mod tests {
     fn test_contains(a: &str, b: &str) {
         let nr_a = NodeRoute::from(a);
         let nr_b = NodeRoute::from(b);
-        assert!(nr_a.contains(nr_b));
+        assert!(nr_a.contains(&nr_b));
     }
 
     #[test_case( "ip.earth","" ; "when empty")]   
@@ -108,7 +122,7 @@ mod tests {
     fn test_not_contains(a: &str, b: &str) {
         let nr_a = NodeRoute::from(a);
         let nr_b = NodeRoute::from(b);
-        assert!(! nr_a.contains(nr_b));
+        assert!(! nr_a.contains(&nr_b));
     }
 
 

@@ -1,7 +1,7 @@
 use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};    
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 use async_trait::async_trait;
 use crate::routing::MetaBundle;
 
@@ -11,15 +11,17 @@ pub mod cla_manager;
 pub mod stcp_server;
 pub mod loopback;
 
-#[async_trait]
-pub trait BundleReader {
-    async fn start(cla_handle: cla_handle::ClaHandle);
+
+pub trait ClaTrait: Send + Sync {
+    fn send(&self, bundle: Arc<RwLock<MetaBundle>>);
+    fn start(&self);
     // async fn accept() -> Arc<MetaBundle>;
+
 }
 
-#[async_trait]
-pub trait BundleWriter {
-    async fn send(bundle: &Arc<MetaBundle>);
+pub trait ClaHandleTrait: Send + Sync {
+    /// The Handle queues the bundle and promises to return quickly
+    fn process_bundle(&self, bundle: bp7::Bundle);
 }
 
 #[derive(Clone, Debug, PartialEq)]

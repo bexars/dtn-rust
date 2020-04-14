@@ -263,6 +263,10 @@ pub(super) fn start(file: Option<String>, bh: BusHandle) -> io::Result<()> {
                         let res = futures::executor::block_on(crate::conf::get_conf(&mut bh.clone()));
                         writeln!(out, "{}", res)?;
                     }
+                    "route" => {
+                        let res = futures::executor::block_on(crate::routing::router::get_routes_string(&mut bh.clone()));
+                        writeln!(out, "{}", res)?;
+                    }   
                     _ => { 
                         writeln!(out, "read input: {:?}", line)?; 
                     }
@@ -301,6 +305,7 @@ static MAIN_COMMANDS: &[(&str, &str)] = &[
 
 static SHOW_COMMANDS: &[(&str, &str)] = &[
     ("configuration",             "Shows running configuration"),
+    ("route",                     "Displays the routing table"),
 ];
 
 static CONF_COMMANDS: &[(&str, &str)] = &[

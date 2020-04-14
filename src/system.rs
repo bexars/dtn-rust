@@ -60,11 +60,11 @@ pub async fn start(conf_file: String) {
     let cli_mgr = cli::CliManager::new(bus_handle.clone()).await;
     let mut router = routing::router::Router::new(bus_handle.clone()).await;
 
-    let _han_conf = task::spawn(async move { conf_mgr.start().await; });
-    let _han_proc = task::spawn(async move { proc_mgr.start().await; });
-    let _han_clam = task::spawn(async move { cla_mgr.start().await; });
-    let _han_clim = task::spawn(async move { cli_mgr.start().await; });
-    let _han_rout = task::spawn(async move { router.start().await; });
+    let han_conf = task::spawn(async move { conf_mgr.start().await; });
+    let han_rout = task::spawn(async move { router.start().await; });
+    let han_proc = task::spawn(async move { proc_mgr.start().await; });
+    let han_clim = task::spawn(async move { cli_mgr.start().await; });
+    let han_clam = task::spawn(async move { cla_mgr.start().await; });
 
     //    let mut processor = Processor::new();        
 //    task::spawn_blocking(|| {cli::start()});
@@ -81,15 +81,21 @@ pub async fn start(conf_file: String) {
     trace!("About to enter system control  loop");
     while let Some(msg) = rx.recv().await {
         match msg {
+            Shutdown => {
+                break;
+            }
             Message(ModuleMsgEnum::MsgSystem(SystemMessage::ShutdownRequested)) => {
-                debug!("Received shutdown");
+                debug!("Received shutdown request");
                 // bus_handle.broadcast(ModuleMsgEnum::ShutdownNow).await;
                 bus.clone().shutdown().await; 
-                break;
+                
             },
             _ => {},
         }
     }
+    info!("Waiting on threads to exit");
+    tokio::join!(han_conf, han_proc, han_clam, han_rout);
+    info!("System Halted");
 }
 
 // *****************************************************************************************

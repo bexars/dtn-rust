@@ -1,11 +1,12 @@
 use log::*;
 
-use crate::processor::Processor;
+// use crate::processor::Processor;
 use crate::cla::cla_handle::*;
-use crate::conf::Configuration;
-use super::stcp_server::StcpServer;
+use super::*;
+// use crate::conf::Configuration;
+// use super::stcp_server::StcpServer;
 use std::collections::HashMap;
-use bp7::Bundle;
+// use bp7::Bundle;
 use tokio::prelude::*;
 use crate::bus::{ModuleMsgEnum};
 use crate::system::SystemModules;
@@ -19,7 +20,7 @@ use msg_bus::{MsgBusHandle, Message};
 
 
 pub struct ClaManager {
-    pub adapters: Arc<RwLock<HashMap<HandleId, Arc<Mutex<ClaHandle>>>>>,
+    pub adapters: Arc<RwLock<HashMap<HandleId, Arc<RwLock<ClaHandle>>>>>,
     // conf: Arc<RwLock<Configuration>>,
     bus_handle: MsgBusHandle<SystemModules, ModuleMsgEnum>,
     clam_rx: Arc<Mutex<Receiver<Message<ModuleMsgEnum>>>>,
@@ -34,26 +35,55 @@ impl ClaManager {
         Self {
             clam_rx:  Arc::new(Mutex::new(rx)),
             bus_handle,
-            adapters: Arc::new(RwLock::new(HashMap::<HandleId, Arc<Mutex<ClaHandle>>>::new())),
+            adapters: Arc::new(RwLock::new(HashMap::<HandleId, Arc<RwLock<ClaHandle>>>::new())),
+        }
+    }
+    fn init_cla(&self, i: HandleId, name: String, cla_conf: AdapterConfiguration) -> Arc<RwLock<ClaHandle>> {
+        let (rw, cla) = match cla_conf.cla_type {
+            ClaType::LoopBack => { (ClaRW::RW, loopback::LoopbackCLA::new(cla_conf.clone(), self.bus_handle.clone())) },
+            _ => { (ClaRW::RW, loopback::LoopbackCLA::new(cla_conf.clone(), self.bus_handle.clone())) },
+        };
+        let handle = Arc::new(RwLock::new(ClaHandle::new(i, 
+                            name.clone(),
+                            self.bus_handle.clone(), 
+                            cla_conf.clone(), 
+                            rw, 
+                            Arc::new(RwLock::new(Box::new(cla))),
+        )));
+        handle
+
+    }
+
+    async fn start_clas(&self) {
+        debug!("start_clas");
+        let mut adapters = self.adapters.write().await;
+        for (_, h) in adapters.iter_mut() {
+            ClaHandle::start(&h).await;
         }
     }
 
-    async fn start_clas(&mut self) {
+    async fn init_clas(&mut self) {
         let conf = crate::conf::get_cla_conf(&mut self.bus_handle.clone()).await;
-        
-        for cla_conf in conf.adapters {
+        let mut adapters = self.adapters.write().await;
+        let mut i: HandleId = 0;
+        debug!("init_clas");
 
-        }
+        for (name, cla_conf) in conf.adapters {
+            let h = self.init_cla(i, name.clone(), cla_conf.clone());
+            adapters.insert(i, h);
+            i += 1;
+        };
     }
 
     pub async fn start(&mut self) {
-        let rx = self.clam_rx.clone();
         let mut bus_handle = self.bus_handle.clone();
 
         // Instantiate all the CLAs
+        self.init_clas().await;
         self.start_clas().await;
     
-        while let Some(msg) = rx.lock().await.recv().await {
+        let mut rx = self.clam_rx.lock().await;
+        while let Some(msg) = rx.recv().await {
             // Listen for updates from CLAs
             // debug!("Received msg: {:?}", msg);
             match msg {
