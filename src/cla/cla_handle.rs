@@ -1,14 +1,12 @@
 use log::*;
 use std::sync::{Arc};
-use crate::processor::Processor;
 use super::ClaRW;
-use super::ClaType;
 use super::{ClaTrait, ClaBundleStatus};
-use crate::system::SystemModules;
+use crate::system::{ SystemModules};
 use crate::routing::*;
 use tokio::sync::mpsc::{Sender,Receiver};
 use tokio::sync::RwLock;
-use msg_bus::{MsgBus, MsgBusHandle};
+use msg_bus::{Message, MsgBusHandle};
 use crate::bus::ModuleMsgEnum;
 use super::AdapterConfiguration;
 
@@ -26,7 +24,7 @@ pub struct ClaHandle {
     tx: Sender<MetaBundle>,
     rx: Receiver<MetaBundle>,
     cla_config: AdapterConfiguration,
-    cla: Arc<RwLock<Box<ClaTrait>>>,
+    cla: Arc<RwLock<Box<dyn ClaTrait>>>,
 }
 
 pub type HandleId = usize;
@@ -35,7 +33,7 @@ pub type HandleId = usize;
 impl ClaHandle {
     pub fn new( id: HandleId, name: String, 
                         bus_handle: MsgBusHandle<SystemModules, ModuleMsgEnum>, 
-                        cla_config: AdapterConfiguration, cla_rw: ClaRW, cla: Arc<RwLock<Box<ClaTrait>>>) -> ClaHandle 
+                        cla_config: AdapterConfiguration, cla_rw: ClaRW, cla: Arc<RwLock<Box<dyn ClaTrait>>>) -> ClaHandle 
         {
         debug!("Inside ClaHandle new");
         let (tx, rx) = tokio::sync::mpsc::channel(50);
@@ -58,8 +56,8 @@ impl ClaHandle {
 
 
     pub async fn start(&mut self) {
-        // let self_handle = self_handle.clone();
- 
+
+        let mut system_handle = self.bus_handle.clone().register(SystemModules::Cla(self.id)).await.unwrap();
 
         let mut routing_handle = crate::routing::router::add_cla_handle(&mut self.bus_handle.clone(), self.id, self.tx.clone()).await;
         self.router_handle = Some(routing_handle.clone());        
@@ -75,15 +73,24 @@ impl ClaHandle {
             }
             _ => {}
         };
-        let mut rx = &mut self.rx;
+        let rx = &mut self.rx;
 
-        let (mut cla_tx, mut cla_rx) = tokio::sync::mpsc::channel::<ClaBundleStatus>(50);
+        let (cla_tx, mut cla_rx) = tokio::sync::mpsc::channel::<ClaBundleStatus>(50);
 
         self.cla.write().await.start(cla_tx);
         loop {
-            let bundle = tokio::select! {
+            let _ = tokio::select! {
+                Some(msg) = system_handle.recv() => {
+                    match msg {
+                        Message::Shutdown => {
+                            self.cla.write().await.stop();
+                            break;
+                        },
+                        _ => {},
+                    }
+                }
                 Some(router_bun) = rx.recv() => { // Received bundle from Router 
-                    self.cla.read().await.send(router_bun);
+                    self.cla.write().await.send(router_bun);
                 },
                 Some(cla_bun) = cla_rx.recv() => { // Received bundle from CLA
                     match cla_bun {

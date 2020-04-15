@@ -22,11 +22,11 @@ impl LoopbackCLA {
 }
 
 impl ClaTrait for LoopbackCLA {
-    fn start(&self, tx: Sender<ClaBundleStatus>) {
+    fn start(&mut self, tx: Sender<ClaBundleStatus>) {
         debug!("Loopback Started");
         // do nothing really.  Would loop on a real CLA
     }
-    fn send(&self, mbun: MetaBundle) {
+    fn send(&mut self, mbun: MetaBundle) {
         debug!("Loopback {} received a bundle", self.config.name );
         println!("Bundle from: {}", mbun.bundle.primary.source);
         if let Some(payload) = mbun.bundle.payload() {
@@ -35,7 +35,7 @@ impl ClaTrait for LoopbackCLA {
         // TODO Send bundle to the local agent
     }
 
-    fn stop(&self) {
+    fn stop(&mut self) {
         unimplemented!();
     }
 }

@@ -23,10 +23,10 @@ pub enum ClaBundleStatus {
 }
 
 pub trait ClaTrait: Send + Sync {
-    fn send(&self, bundle: MetaBundle);
-    fn start(&self, tx: Sender<ClaBundleStatus>);
+    fn send(&mut self, bundle: MetaBundle);
+    fn start(&mut self, tx: Sender<ClaBundleStatus>);
     // async fn accept() -> Arc<MetaBundle>;
-    fn stop(&self);
+    fn stop(&mut self);
 }
 
 // pub trait ClaHandleTrait: Send + Sync {

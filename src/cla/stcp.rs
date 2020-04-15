@@ -39,12 +39,12 @@ impl Stcp {
 
 impl ClaTrait for Stcp {
 
-    fn start(&self, tx: Sender<ClaBundleStatus>) {
+    fn start(&mut self, tx: Sender<ClaBundleStatus>) {
         // TODO handle this
     }
 
-    fn stop(&self) { unimplemented!(); }
-    fn send(&self, bundle: MetaBundle) { 
+    fn stop(&mut self) { unimplemented!(); }
+    fn send(&mut self, bundle: MetaBundle) { 
 
          let addr = format!("{}:{}", self.address, self.port);
         
