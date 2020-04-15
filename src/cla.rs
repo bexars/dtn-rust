@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use std::hash::{Hash, Hasher};    
 use crate::routing::MetaBundle;
 use tokio::sync::mpsc::Sender;
+pub use self::cla_handle::HandleId as HandleId;
 
 
 pub mod cla_handle;

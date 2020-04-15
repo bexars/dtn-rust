@@ -12,13 +12,12 @@ use super::AdapterConfiguration;
 
 
 pub struct ClaHandle {
-    pub rw: ClaRW,
     pub id: HandleId,
+    pub rw: ClaRW,
     pub in_bytes: usize,
     pub out_bytes: usize,
     pub in_bundles: usize,
     pub out_bundles: usize,
-    pub name: String,
     bus_handle: MsgBusHandle<SystemModules, ModuleMsgEnum>,
     router_handle: Option<Sender<MetaBundle>>,
     tx: Sender<MetaBundle>,
@@ -27,19 +26,20 @@ pub struct ClaHandle {
     cla: Arc<RwLock<Box<dyn ClaTrait>>>,
 }
 
-pub type HandleId = usize;
+pub type HandleId = String;
 
 
 impl ClaHandle {
-    pub fn new( id: HandleId, name: String, 
-                        bus_handle: MsgBusHandle<SystemModules, ModuleMsgEnum>, 
-                        cla_config: AdapterConfiguration, cla_rw: ClaRW, cla: Arc<RwLock<Box<dyn ClaTrait>>>) -> ClaHandle 
+    pub fn new(  
+            id: HandleId,
+            bus_handle: MsgBusHandle<SystemModules, ModuleMsgEnum>, 
+            cla_config: AdapterConfiguration, cla_rw: ClaRW, cla: Arc<RwLock<Box<dyn ClaTrait>>>
+        ) -> ClaHandle 
         {
         debug!("Inside ClaHandle new");
         let (tx, rx) = tokio::sync::mpsc::channel(50);
         Self {
             id,
-            name,
             bus_handle,
             rw: cla_rw,
             router_handle: None,
@@ -63,7 +63,7 @@ impl ClaHandle {
                 // send the route to the router
                 let rte = Route { 
                     dest: NodeRoute::from(&self.cla_config.peernode), 
-                    nexthop: RouteType::ConvLayer(self.id),
+                    nexthop: RouteType::ConvLayer(self.id.clone()),
                 };
                 router::add_route(&mut self.bus_handle, rte).await;
             }
@@ -73,12 +73,11 @@ impl ClaHandle {
 
     }
 
-
     pub async fn start(&mut self) {
 
-        let mut system_handle = self.bus_handle.clone().register(SystemModules::Cla(self.id)).await.unwrap();
+        let mut system_handle = self.bus_handle.clone().register(SystemModules::Cla(self.id.clone())).await.unwrap();
 
-        let routing_handle = crate::routing::router::add_cla_handle(&mut self.bus_handle.clone(), self.id, self.tx.clone()).await;
+        let routing_handle = crate::routing::router::add_cla_handle(&mut self.bus_handle.clone(), self.id.clone(), self.tx.clone()).await;
         self.router_handle = Some(routing_handle.clone());        
 
         let (cla_tx, mut cla_rx) = tokio::sync::mpsc::channel::<ClaBundleStatus>(50);
@@ -129,6 +128,7 @@ impl ClaHandle {
         let metabun = MetaBundle{ 
             dest: NodeRoute::from(&bundle),
             bundle,  
+            status: MetaBundleStatus::New( self.id.clone()),
         };
 
         let mut routing_handle = routing_handle.clone();

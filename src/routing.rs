@@ -15,10 +15,17 @@ pub enum RoutingMessage {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub enum MetaBundleStatus {
+    New(String),  
+
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct MetaBundle {
     pub bundle: bp7::bundle::Bundle,
     pub dest: NodeRoute,
     //arrival
+    pub status: MetaBundleStatus,
 }
 
 #[derive(Debug, Clone, PartialEq)]

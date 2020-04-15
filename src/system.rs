@@ -4,12 +4,14 @@ use crate::cli;
 use crate::bus::ModuleMsgEnum;
 use crate::conf;
 use crate::cla::cla_manager::ClaManager;
+use crate::cla::HandleId;
 use crate::processor;
 use crate::routing;
 use strum_macros::*;
 use msg_bus::{MsgBus, MsgBusHandle};
 use msg_bus::Message::*;    
 use std::path::PathBuf;
+
 
 // use std::path::PathBuf;
 
@@ -31,7 +33,7 @@ pub enum SystemMessage {
 pub enum SystemModules {
     Processing,      // Actually reads the Bundle and decides what to do with it
     ClaManager,      // Manages the various CLA creation/deletion
-    Cla(usize),      // Each CLA 
+    Cla(HandleId),      // Each CLA 
     CLI,             // User interface
     Logging,         // Catches and distributes all logging
     Storage,         // Bundles being written to disk

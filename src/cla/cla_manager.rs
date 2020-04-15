@@ -19,7 +19,6 @@ pub struct ClaManager {
     // conf: Arc<RwLock<Configuration>>,
     bus_handle: MsgBusHandle<SystemModules, ModuleMsgEnum>,
     clam_rx: Arc<Mutex<Receiver<Message<ModuleMsgEnum>>>>,
-    next_handle_id: HandleId,
 }
 
 impl ClaManager {
@@ -31,10 +30,9 @@ impl ClaManager {
             clam_rx:  Arc::new(Mutex::new(rx)),
             bus_handle,
             adapters: Arc::new(RwLock::new(HashMap::<HandleId, tokio::task::JoinHandle<()>>::new())),
-            next_handle_id: 0,
         }
     }
-    fn init_cla(&self, i: HandleId, name: String, cla_conf: AdapterConfiguration) -> tokio::task::JoinHandle<()> {
+    fn init_cla(&self, name: String, cla_conf: AdapterConfiguration) {
         let (rw, cla):(ClaRW, Box<dyn ClaTrait>) = match cla_conf.cla_type.clone() 
         {
             ClaType::LoopBack => { 
@@ -49,7 +47,7 @@ impl ClaManager {
             _ => { (ClaRW::RW, Box::new(loopback::LoopbackCLA::new(cla_conf.clone(), self.bus_handle.clone()))) 
             },
         };
-        let mut handle = ClaHandle::new(i, 
+        let mut handle = ClaHandle::new( 
                             name.clone(),
                             self.bus_handle.clone(), 
                             cla_conf.clone(), 
@@ -57,8 +55,8 @@ impl ClaManager {
                             Arc::new(RwLock::new(cla)));
         
                             
-        let h = tokio::task::spawn(async move { handle.start().await; });
-        h
+        tokio::task::spawn(async move { handle.start().await; });
+        
     }
 
     // async fn start_clas(&self) {
@@ -71,15 +69,12 @@ impl ClaManager {
 
     async fn start_clas(&mut self) {
         let conf = crate::conf::get_cla_conf(&mut self.bus_handle.clone()).await;
-        let mut adapters = self.adapters.write().await;
+        // let mut adapters = self.adapters.write().await;
         
         debug!("init_clas");
 
         for (name, cla_conf) in conf.adapters {
-            let h = self.init_cla(self.next_handle_id, name.clone(), cla_conf.clone());
-            
-            adapters.insert(self.next_handle_id, h);
-            self.next_handle_id += 1;
+            self.init_cla(name.clone(), cla_conf.clone());
         };
     }
 
