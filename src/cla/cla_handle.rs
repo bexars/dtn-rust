@@ -54,13 +54,9 @@ impl ClaHandle {
         }
     }
 
+    /// Should be called whenever a CLA leaves shutdown state
 
-    pub async fn start(&mut self) {
-
-        let mut system_handle = self.bus_handle.clone().register(SystemModules::Cla(self.id)).await.unwrap();
-
-        let mut routing_handle = crate::routing::router::add_cla_handle(&mut self.bus_handle.clone(), self.id, self.tx.clone()).await;
-        self.router_handle = Some(routing_handle.clone());        
+    async fn start_cla(&mut self, cla_tx: Sender<ClaBundleStatus>) {
 
         match &self.rw {
             ClaRW::RW | ClaRW::W => {
@@ -73,11 +69,23 @@ impl ClaHandle {
             }
             _ => {}
         };
-        let rx = &mut self.rx;
+        self.cla.write().await.start(cla_tx);
+
+    }
+
+
+    pub async fn start(&mut self) {
+
+        let mut system_handle = self.bus_handle.clone().register(SystemModules::Cla(self.id)).await.unwrap();
+
+        let mut routing_handle = crate::routing::router::add_cla_handle(&mut self.bus_handle.clone(), self.id, self.tx.clone()).await;
+        self.router_handle = Some(routing_handle.clone());        
 
         let (cla_tx, mut cla_rx) = tokio::sync::mpsc::channel::<ClaBundleStatus>(50);
+        if !self.cla_config.shutdown { self.start_cla(cla_tx.clone()).await; };
+        
 
-        self.cla.write().await.start(cla_tx);
+        let rx = &mut self.rx;
         loop {
             let _ = tokio::select! {
                 Some(msg) = system_handle.recv() => {
@@ -100,7 +108,7 @@ impl ClaHandle {
                                 dest: NodeRoute::from(&bundle),
                                 bundle,  
                             };
-                            routing_handle.send(metabun).await;
+                            routing_handle.send(metabun).await.unwrap();
                         }
                         _ => {},  // TODO Implement Failure, Success
                     };                      
@@ -111,9 +119,4 @@ impl ClaHandle {
         }
     }
 
-    // pub async fn process_bundle(metabundle: Arc<MetaBundle>) {
-    //     // update stats
-    //     // send to the router
-    
-    // }
 }
