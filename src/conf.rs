@@ -44,7 +44,7 @@ pub struct Configuration {
 
 pub struct ConfManager {
     config: Arc<RwLock<Configuration>>,
-    config_file: PathBuf,
+    // config_file: PathBuf,  // TODO save to the correct path
     bus_handle: MsgBusHandle<SystemModules, ModuleMsgEnum>,
     conf_rx: Arc<Mutex<Receiver<Message<ModuleMsgEnum>>>>,
 }
@@ -58,14 +58,15 @@ impl ConfManager {
         let config = Configuration::load_file(&config_file);
         let config: Configuration = match config {
             Err(e) => {
-                eprintln!("Unable to load configuration: {:?}", e);
+                eprintln!("Unable to load configuration file:{:?} {:?}", config_file, e);
+                eprintln!("Default config being used");
                 Default::default() }
             Ok(conf) => conf
         };
         let config = Arc::new(RwLock::new(config));
         Self {
             config,
-            config_file,
+            // config_file,
             bus_handle: bus_handle,
             conf_rx: Arc::new(Mutex::new(rx)),
         }
@@ -87,11 +88,11 @@ impl ConfManager {
                         ConfMessage::SetNodeName(nodename) => {
                             let mut conf = self.config.write().await;
                             conf.nodename = nodename;
-                            rcpt.send(ModuleMsgEnum::MsgOk("".to_string()));
+                            rcpt.send(ModuleMsgEnum::MsgOk("".to_string())).unwrap();
                         }
                         ConfMessage::GetNodeName => {
                             let conf = self.config.read().await;
-                            rcpt.send(ModuleMsgEnum::MsgOk(conf.nodename.clone()));
+                            rcpt.send(ModuleMsgEnum::MsgOk(conf.nodename.clone())).unwrap();
                         }
                         ConfMessage::GetConfigString => {
                             let conf = self.config.read().await;
