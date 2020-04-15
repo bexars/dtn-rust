@@ -2,6 +2,8 @@ use log::*;
 use linefeed;
 
 use std::io;
+use std::io::Write;
+
 use std::sync::Arc;
 
 use linefeed::{Interface, Prompter, ReadResult};
@@ -13,7 +15,7 @@ use linefeed::terminal::Terminal;
 use msg_bus::*;
 use crate::system::SystemModules;
 use crate::bus::ModuleMsgEnum;
-use crate::cla::{AdapterConfiguration, ClaConfiguration, ClaType};
+use crate::cla::{AdapterConfiguration, ClaType};
 
 type BusHandle = MsgBusHandle<SystemModules, ModuleMsgEnum>;
 
@@ -32,25 +34,12 @@ enum Mode {
 
 
 
-pub(super) fn start(file: Option<String>, bh: BusHandle) -> io::Result<()> {
+pub(super) fn start(bh: BusHandle) -> io::Result<()> {
 
-    let file2 = file.clone();    
-    let mut out: Box<dyn std::io::Write> = if let Some(file) = file2 {
-        Box::new(std::fs::File::create(file).unwrap())
-    } else {
-        Box::new(std::io::stdout())
-    };
-
-    let interface = if let Some(file) = file {
-        // Interface::with_term("my-app", mortal::unix::OpenTerminalExt::from_path(file).map(linefeed::DefaultTerminal).unwrap()
-        // Interface::with_term("my-app", linefeed::DefaultTerminal::new_path(file).unwrap()).unwrap()
-        Interface::new("my-application").unwrap()
-
-    } else {
-        Interface::new("my-application").unwrap()
-
-    };
-
+    // TODO Change writeln to println
+    // Using out is leftover from when this was going to a telnet service as well
+    let mut out = std::io::stdout();
+    let interface = Interface::new("my-application").unwrap();
 
     // let interface = Arc::new(Interface::new("demo").unwrap());
     // println!("After new interface");
@@ -244,7 +233,7 @@ pub(super) fn start(file: Option<String>, bh: BusHandle) -> io::Result<()> {
                         mode = Mode::Normal; 
                     },
                     Mode::ConfCla(cla_conf) => {
-                        //TODO verify CLA 
+                        //TODO verify CLA type
                         //TODO order the CLA list
                         interface.set_prompt(&format!("{}(conf)>",nodename))?;
                         interface.set_completer(Arc::new(ConfCompleter));
