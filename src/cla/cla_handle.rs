@@ -22,7 +22,7 @@ pub struct ClaHandle {
     bus_handle: MsgBusHandle<SystemModules, ModuleMsgEnum>,
     router_handle: Option<Sender<MetaBundle>>,
     tx: Sender<MetaBundle>,
-    rx: Receiver<MetaBundle>,
+    rx: Arc<RwLock<Receiver<MetaBundle>>>,
     cla_config: AdapterConfiguration,
     cla: Arc<RwLock<Box<dyn ClaTrait>>>,
 }
@@ -48,7 +48,7 @@ impl ClaHandle {
             out_bundles: 0,
             out_bytes: 0,
             tx,
-            rx,
+            rx: Arc::new(RwLock::new(rx)),
             cla_config,
             cla,
         }
@@ -78,14 +78,14 @@ impl ClaHandle {
 
         let mut system_handle = self.bus_handle.clone().register(SystemModules::Cla(self.id)).await.unwrap();
 
-        let mut routing_handle = crate::routing::router::add_cla_handle(&mut self.bus_handle.clone(), self.id, self.tx.clone()).await;
+        let routing_handle = crate::routing::router::add_cla_handle(&mut self.bus_handle.clone(), self.id, self.tx.clone()).await;
         self.router_handle = Some(routing_handle.clone());        
 
         let (cla_tx, mut cla_rx) = tokio::sync::mpsc::channel::<ClaBundleStatus>(50);
         if !self.cla_config.shutdown { self.start_cla(cla_tx.clone()).await; };
         
-
-        let rx = &mut self.rx;
+        let rx = &mut self.rx.clone();
+        let mut rx = rx.write().await;
         loop {
             let _ = tokio::select! {
                 Some(msg) = system_handle.recv() => {
@@ -100,15 +100,12 @@ impl ClaHandle {
                 Some(router_bun) = rx.recv() => { // Received bundle from Router 
                     self.cla.write().await.send(router_bun);
                 },
-                Some(cla_bun) = cla_rx.recv() => { // Received bundle from CLA
-                    match cla_bun {
-                        ClaBundleStatus::New(bundle) => {
+                Some(rcvd_bundle) = cla_rx.recv() => { // Received bundle from CLA
+                    match rcvd_bundle {
+                        ClaBundleStatus::New(_,_) => {
                             debug!("Received Bundle");
-                            let metabun = MetaBundle{ 
-                                dest: NodeRoute::from(&bundle),
-                                bundle,  
-                            };
-                            routing_handle.send(metabun).await.unwrap();
+                            self.process_bundle(rcvd_bundle, routing_handle.clone());
+
                         }
                         _ => {},  // TODO Implement Failure, Success
                     };                      
@@ -117,6 +114,26 @@ impl ClaHandle {
             };
 
         }
+    }
+
+    fn process_bundle<'a>(&mut  self, bundle: ClaBundleStatus, routing_handle: Sender<MetaBundle>)  {
+        
+        let (mut bundle, size) = match bundle {
+            ClaBundleStatus::New(bundle, size) => { (bundle, size) },
+            _ => { return; },
+        };
+
+        self.in_bundles += 1;
+        self.in_bytes += size;
+        
+        let metabun = MetaBundle{ 
+            dest: NodeRoute::from(&bundle),
+            bundle,  
+        };
+
+        let mut routing_handle = routing_handle.clone();
+        tokio::task::spawn(async move { routing_handle.send(metabun).await });
+
     }
 
 }

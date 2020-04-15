@@ -19,7 +19,7 @@ pub mod loopback;
 pub enum ClaBundleStatus {
     Failure(MetaBundle),
     Success(MetaBundle),
-    New(bp7::Bundle),
+    New(bp7::Bundle, usize),
 }
 
 pub trait ClaTrait: Send + Sync {

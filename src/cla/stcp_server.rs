@@ -63,7 +63,6 @@ impl ClaTrait for StcpServer {
                                 Ok(mut sock) => {
                                     tokio::spawn(async move {
                                         let remote_addr = sock.peer_addr().expect("Unable to get peer address");
-                                        println!("Incoming stcp from: {}", remote_addr);
                                         
                                         let (reader, _) = sock.split();
                                         let mut reader = BufReader::new(reader);
@@ -73,7 +72,6 @@ impl ClaTrait for StcpServer {
                                         };
 
                                         let cbor_maj = reader.read_u8().await.unwrap();
-                                        println!("2nd byte: {}", cbor_maj);
                                         let mut size: usize = 0;
                                         if cbor_maj & 24 == 24  {
                                             match cbor_maj & 31 {
@@ -94,10 +92,9 @@ impl ClaTrait for StcpServer {
                                 
                                         assert_eq!(total, size); 
                                         let buf = ByteBuffer::from(buf);
-                                        let bundle = Bundle::try_from(buf).unwrap();
-                                        println!("STCP received bundle, sending to processing");
-                                        tx.send(ClaBundleStatus::New(bundle)).await;
-
+                                        let bundle = Bundle::try_from(buf).unwrap(); // TODO handle errors here
+                                        tx.send(ClaBundleStatus::New(bundle, size)).await; // TODO send more accurate total bytes received
+                                        // TODO send stats for sender, size, etc
                                     });
                                     
 
@@ -115,7 +112,7 @@ impl ClaTrait for StcpServer {
     }
 
     fn stop(&mut self) { if matches!(self.stop_sender, Some(_)) { 
-        futures::executor::block_on(self.stop_sender.as_ref().unwrap().clone().send(())); } }
+        futures::executor::block_on(self.stop_sender.as_ref().unwrap().clone().send(())).unwrap(); } }
 
     fn send(&mut self, bundle: MetaBundle) { unimplemented!(); }
 }
