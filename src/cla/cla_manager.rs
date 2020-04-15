@@ -84,15 +84,14 @@ impl ClaManager {
     }
 
     pub async fn start(&mut self) {
-        let bus_handle = self.bus_handle.clone();
+        let _bus_handle = self.bus_handle.clone();
 
         // Instantiate all the CLAs
         self.start_clas().await;
     
         let mut rx = self.clam_rx.lock().await;
         while let Some(msg) = rx.recv().await {
-            // Listen for updates from CLAs
-            // debug!("Received msg: {:?}", msg);
+            // TODO Listen for updates from CLAs
             match msg {
                 Message::Shutdown => { 
                     debug!("Received Halt");

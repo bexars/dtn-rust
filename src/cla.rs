@@ -1,9 +1,6 @@
 use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};    
-use tokio::sync::{RwLock};
-use std::sync::Arc;
-use async_trait::async_trait;
 use crate::routing::MetaBundle;
 use tokio::sync::mpsc::Sender;
 
@@ -15,7 +12,7 @@ pub mod stcp;
 pub mod loopback;
 
 
-
+#[derive(Clone, Debug, PartialEq)]
 pub enum ClaBundleStatus {
     Failure(MetaBundle),
     Success(MetaBundle),

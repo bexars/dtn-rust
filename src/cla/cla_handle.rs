@@ -118,7 +118,7 @@ impl ClaHandle {
 
     fn process_bundle<'a>(&mut  self, bundle: ClaBundleStatus, routing_handle: Sender<MetaBundle>)  {
         
-        let (mut bundle, size) = match bundle {
+        let (bundle, size) = match bundle {
             ClaBundleStatus::New(bundle, size) => { (bundle, size) },
             _ => { return; },
         };

@@ -6,9 +6,9 @@ use tokio::sync::mpsc::*;
 use tokio::sync::{RwLock, Mutex};
 use std::sync::Arc;
 use std::collections::HashMap;
-use msg_bus::{MsgBusHandle, Message};
+use msg_bus::{Message};
 use super::RoutingMessage::*;
-use crate::cla::cla_handle::{ClaHandle, HandleId};
+use crate::cla::cla_handle::{HandleId};
 use super::*;
 
 
@@ -104,7 +104,7 @@ impl Router {
         let rx = self.rx.clone();
         
 
-        let bus_handle = self.bus_handle.clone();
+        let _bus_handle = self.bus_handle.clone();
         let (mut tx_control, rx_control) = channel::<()>(1);
 
         tokio::task::spawn(Router::route_loop(self.route_receiver.clone(), self.cla_handles.clone(), self.route_table.clone(), rx_control));
@@ -180,11 +180,11 @@ impl Router {
             };
             let cla_handles = cla_handles.read().await;
             let tx = cla_handles.get(&cla_id);
-            let mut tx = match tx {
+            let tx = match tx {
                 None => { warn!("CLA not in lookup table.  Dropping Bundle"); continue; },
                 Some(tx) => { tx },
             };
-            tx.clone().send(bundle).await;
+            tx.clone().send(bundle).await.unwrap();
 
 
         
@@ -215,7 +215,7 @@ impl Router {
         
         let rt = &self.route_table.write().await;
         let mut out = String::new();
-        let mut indent = String::new();
+        let indent = String::new();
         fmt_parent(&rt, &mut out, indent);
         // println!("{}", out);
         out

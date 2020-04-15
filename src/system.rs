@@ -66,7 +66,7 @@ pub async fn start(conf_file: String) {
     let han_conf = task::spawn(async move { conf_mgr.start().await; });
     let han_rout = task::spawn(async move { router.start().await; });
     let han_proc = task::spawn(async move { proc_mgr.start().await; });
-    let han_clim = task::spawn(async move { cli_mgr.start().await; });
+    let _han_clim = task::spawn(async move { cli_mgr.start().await; });
     let han_clam = task::spawn(async move { cla_mgr.start().await; });
 
     //    let mut processor = Processor::new();        
@@ -97,7 +97,9 @@ pub async fn start(conf_file: String) {
         }
     }
     info!("Waiting on threads to exit");
-    tokio::join!(han_conf, han_proc, han_clam, han_rout);
+    #[allow(unused_must_use)] {
+         tokio::join!(han_conf, han_proc, han_clam, han_rout);
+    }
     info!("System Halted");
 }
 

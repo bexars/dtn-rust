@@ -114,7 +114,7 @@ pub(super) fn start(bh: BusHandle) -> io::Result<()> {
             ("cla", Mode::Conf) if no_flag => {
                 let (subcmd, mut name) = split_first_word(&args);
                     if name == "" { name = subcmd; }
-                    futures::executor::block_on(crate::conf::del_cla_conf(&mut bh.clone(), name.to_string()));
+                    futures::executor::block_on(crate::conf::del_cla_conf(&mut bh.clone(), name.to_string())).unwrap();
             }
             ("cla", Mode::Conf) => {
                 let (subcmd, args) = split_first_word(&args);
@@ -284,7 +284,7 @@ pub(super) fn start(bh: BusHandle) -> io::Result<()> {
     }
 
     writeln!(out, "Goodbye.")?;
-
+    debug!("Exited");
     Ok(())
 }
 

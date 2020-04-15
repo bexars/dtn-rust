@@ -1,4 +1,3 @@
-use crate::cla::cla_handle::ClaHandle;
 use crate::cla::cla_handle::HandleId;
 use tokio::sync::mpsc::*;
 use std::fmt;
@@ -37,7 +36,7 @@ impl fmt::Display for RouteType {
             RouteType::ConvLayer(hid) =>   { write!(f, "CLA:{}", hid) },
             RouteType::Node(s) =>          { write!(f, "Node: {}", s) },
             RouteType::Null =>             { write!(f, "Null") },
-            _ =>                           { write!(f, "UPDATE to_string for RouteType") },
+            // _ =>                           { write!(f, "UPDATE to_string for RouteType") },
         }
     }
 }

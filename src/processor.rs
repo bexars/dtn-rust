@@ -1,10 +1,10 @@
 use log::*;
 use bp7::Bundle;
-use crate::cla::cla_handle::{ClaHandle, HandleId};
+use crate::cla::cla_handle::{HandleId};
 use crate::bus::ModuleMsgEnum;
 use crate::system::SystemModules;
 use tokio::sync::mpsc::*;
-use tokio::sync::{RwLock, Mutex};
+use tokio::sync::{Mutex};
 use std::sync::Arc;
 use msg_bus::{MsgBusHandle, Message};
 
@@ -29,7 +29,7 @@ impl Processor {
     pub async fn start(&mut self) {
         let rx = self.rx.clone();
 
-        let bus_handle = self.bus_handle.clone();
+        let _bus_handle = self.bus_handle.clone();
 
         while let Some(msg) = rx.lock().await.recv().await {
                 // Listen for updates from CLAs
@@ -42,7 +42,7 @@ impl Processor {
                 //     // Do something with the msg
                 // });
         }; // end While
-
+        debug!("Exited process loop");
  
 
 
@@ -64,46 +64,3 @@ impl Processor {
     }
 }
 
-
-
-// pub struct Processor {
-//     node: String,
-//     cla_manager: Arc<ClaManager>,
-// }
-
-//impl Processor {
-    // pub fn new() -> Self {
-    //     Self {
-    //         node: conf.local_eid.node_id().unwrap(),
-    //         cla_manager: Arc::new(ClaManager::new(conf)),
-    //     }
-    // }
-
-
-//     pub async fn start(&mut self) {
-//         println!("Starting processor for node: {}", self.node);
-
-//         println!("Building bundle loop");
-//         let cla_manager = self.cla_manager.clone();
-//         let (tx, rx) : (Sender<(HandleId,Bundle)>, Receiver< (HandleId, Bundle) >) = channel();
-
-//         // cla_manager.start(tx);
-
-//         let process_loop = async move {
-//             loop {
-//                 let (id, bun) = rx.recv().unwrap();
-
-//                 // println!("Received bundle on: {}", &cla_manager.adapters.read().unwrap().get(&id).unwrap().lock().unwrap().name);
-//                 // TODO Update stats on Cla Handle
-//                 // &self.process_bundle(bun, id);
-//             }
-//         };
-//         process_loop.await;
-// //        tokio::spawn(process_loop);
-//         println!("Started bundle processing loop");
-
-
-
-
-//         // TODO Timer loop to check if bundles can be sent
-//     }

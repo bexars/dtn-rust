@@ -62,7 +62,7 @@ impl ClaTrait for StcpServer {
                                 Err(e) => eprintln!("stcp accept failed: {:?}", e),
                                 Ok(mut sock) => {
                                     tokio::spawn(async move {
-                                        let remote_addr = sock.peer_addr().expect("Unable to get peer address");
+                                        let _remote_addr = sock.peer_addr().expect("Unable to get peer address");
                                         
                                         let (reader, _) = sock.split();
                                         let mut reader = BufReader::new(reader);
@@ -93,7 +93,7 @@ impl ClaTrait for StcpServer {
                                         assert_eq!(total, size); 
                                         let buf = ByteBuffer::from(buf);
                                         let bundle = Bundle::try_from(buf).unwrap(); // TODO handle errors here
-                                        tx.send(ClaBundleStatus::New(bundle, size)).await; // TODO send more accurate total bytes received
+                                        tx.send(ClaBundleStatus::New(bundle, size)).await.unwrap(); // TODO send more accurate total bytes received
                                         // TODO send stats for sender, size, etc
                                     });
                                     
@@ -114,5 +114,5 @@ impl ClaTrait for StcpServer {
     fn stop(&mut self) { if matches!(self.stop_sender, Some(_)) { 
         futures::executor::block_on(self.stop_sender.as_ref().unwrap().clone().send(())).unwrap(); } }
 
-    fn send(&mut self, bundle: MetaBundle) { unimplemented!(); }
+    fn send(&mut self, _bundle: MetaBundle) { unimplemented!(); }
 }

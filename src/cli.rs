@@ -41,18 +41,18 @@ impl CliManager {
         debug!("In CliManager.start()");
 
         let bh = self.bus_handle.clone();
-        let orig_conf = crate::conf::get_cli_conf(&mut bh.clone()).await;
-        let clim = self.clone();
+        // let orig_conf = crate::conf::get_cli_conf(&mut bh.clone()).await;
+        // let clim = self.clone();
         
         let _handle = tokio::task::spawn_blocking(move || self::terminal::start(bh.clone()));
 
         let rx = self.rx.clone();
         while let Some(msg) = rx.lock().await.recv().await {
             match msg {
-                Message::Message(ModuleMsgEnum::MsgConf(crate::conf::ConfMessage::DataConfigCli(conf_cli))) => {
-                    let clim = self.clone();
+                // Message::Message(ModuleMsgEnum::MsgConf(crate::conf::ConfMessage::DataConfigCli(conf_cli))) => {
+                //     let clim = self.clone();
                     // TODO Think if we need to do something
-                },
+                // },
                 _ => {}
             }
         }

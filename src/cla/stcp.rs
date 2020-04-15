@@ -1,14 +1,6 @@
-use tokio::net::{TcpListener, TcpStream};
-use tokio::io::BufReader;
+use tokio::net::{TcpStream};
 use tokio::prelude::*;
-use futures::stream::StreamExt;
-use bp7::Bundle;
-use bp7::ByteBuffer;
-use std::convert::TryFrom;
-use crate::cla::cla_handle::ClaHandle;
-use crate::cla::{ClaType, ClaRW, ClaTrait, ClaBundleStatus};
-use tokio::sync::{Mutex, RwLock};
-use std::sync::{Arc};
+use crate::cla::{ClaRW, ClaTrait, ClaBundleStatus};
 use tokio::sync::mpsc::Sender;
 use crate::routing::MetaBundle;
 use crate::stcp;
@@ -39,7 +31,7 @@ impl Stcp {
 
 impl ClaTrait for Stcp {
 
-    fn start(&mut self, tx: Sender<ClaBundleStatus>) {
+    fn start(&mut self, _tx: Sender<ClaBundleStatus>) {
         // TODO handle this
     }
 
@@ -49,9 +41,9 @@ impl ClaTrait for Stcp {
          let addr = format!("{}:{}", self.address, self.port);
         
         tokio::task::spawn(async move {
-            let mut stream = TcpStream::connect(addr).await.unwrap();
+            let mut stream = TcpStream::connect(addr).await.unwrap(); //TODO Handle bad connection
 
-            stream.write(&stcp::encapsulate_stcp(bundle.bundle)).await;
+            stream.write(&stcp::encapsulate_stcp(bundle.bundle)).await.unwrap(); //TODO Handle error
         });
     }
 
