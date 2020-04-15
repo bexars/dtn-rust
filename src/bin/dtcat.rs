@@ -61,7 +61,9 @@ fn send_bundle(opts: &Opts) {
     let mut bundle: Bundle = Bundle::new(primary, canonicals);
 
     bundle.primary.destination = EndpointID::with_dtn(& opts.dest.as_ref().unwrap()).unwrap();
-    bundle.primary.source = EndpointID::with_dtn(& opts.source.as_ref().unwrap()).unwrap();
+    if matches!(opts.source, Some(_)) {
+        bundle.primary.source = EndpointID::with_dtn(& opts.source.as_ref().unwrap()).unwrap();
+    }
 
     let host_port = format!("{}:{}", &opts.host, &opts.port);
     let mut stream: TcpStream = match TcpStream::connect(host_port) {
