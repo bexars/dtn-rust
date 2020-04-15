@@ -9,6 +9,7 @@ use crate::stcp;
 pub struct Stcp {
     address: String,
     port: u16,
+    status_handler: Option<Sender<ClaBundleStatus>>
 }
 
 
@@ -22,6 +23,7 @@ impl Stcp {
         Stcp {
             address,
             port,
+            status_handler: None,
         }
         
     }
@@ -31,13 +33,13 @@ impl Stcp {
 
 impl ClaTrait for Stcp {
 
-    fn start(&mut self, _tx: Sender<ClaBundleStatus>) {
-        // TODO handle this
+    fn start(&mut self, tx: Sender<ClaBundleStatus>) {
+        self.status_handler = Some(tx);
     }
 
     fn stop(&mut self) { unimplemented!(); }
     fn send(&mut self, bundle: MetaBundle) { 
-
+        // TODO be smarter and not re-open every bundle
          let addr = format!("{}:{}", self.address, self.port);
         
         tokio::task::spawn(async move {
