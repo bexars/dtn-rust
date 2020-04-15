@@ -5,11 +5,8 @@ use futures::stream::StreamExt;
 use bp7::Bundle;
 use bp7::ByteBuffer;
 use std::convert::TryFrom;
-use crate::cla::cla_handle::ClaHandle;
-use crate::cla::{ClaType, ClaRW, ClaTrait, ClaBundleStatus};
-use tokio::sync::{Mutex, RwLock};
-use std::sync::{Arc};
-use tokio::sync::mpsc::{Sender, Receiver};
+use crate::cla::{ClaRW, ClaTrait, ClaBundleStatus};
+use tokio::sync::mpsc::{Sender};
 use crate::routing::MetaBundle;
 
 
@@ -57,7 +54,7 @@ impl ClaTrait for StcpServer {
                 let mut stop_listener = stop_listener;
                 loop {
                     tokio::select! { 
-                        _  = stop_listener.recv() => { break } // stop due to to stop being received
+                        _  = stop_listener.recv() => { break; } // stop due to to stop being received
                         Some(conn) = incoming.next() => {
                             // let cla_handle = self.cla_handle.clone();
                             let mut tx = tx.clone();
@@ -117,6 +114,8 @@ impl ClaTrait for StcpServer {
 
     }
 
-    fn stop(&mut self) { if matches!(self.stop_sender, Some(_)) { self.stop_sender.as_ref().unwrap().clone().send(()); } }
+    fn stop(&mut self) { if matches!(self.stop_sender, Some(_)) { 
+        futures::executor::block_on(self.stop_sender.as_ref().unwrap().clone().send(())); } }
+
     fn send(&mut self, bundle: MetaBundle) { unimplemented!(); }
 }
