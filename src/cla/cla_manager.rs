@@ -1,13 +1,8 @@
 use log::*;
 
-// use crate::processor::Processor;
 use crate::cla::cla_handle::*;
 use super::*;
-// use crate::conf::Configuration;
-// use super::stcp_server::StcpServer;
 use std::collections::HashMap;
-// use bp7::Bundle;
-use tokio::prelude::*;
 use crate::bus::{ModuleMsgEnum};
 use crate::system::SystemModules;
 use tokio::sync::mpsc::*;
@@ -40,13 +35,19 @@ impl ClaManager {
         }
     }
     fn init_cla(&self, i: HandleId, name: String, cla_conf: AdapterConfiguration) -> tokio::task::JoinHandle<()> {
-        let (rw, cla):(ClaRW, Box<dyn ClaTrait>) = match cla_conf.cla_type.clone() {
-            ClaType::LoopBack => { (ClaRW::RW, Box::new(loopback::LoopbackCLA::new(cla_conf.clone(), self.bus_handle.clone()))) },
+        let (rw, cla):(ClaRW, Box<dyn ClaTrait>) = match cla_conf.cla_type.clone() 
+        {
+            ClaType::LoopBack => { 
+                (ClaRW::RW, Box::new(loopback::LoopbackCLA::new(cla_conf.clone(), self.bus_handle.clone()))) 
+            },
             ClaType::StcpListener(address, port) => { 
-                (ClaRW::R, Box::new(stcp_server::StcpServer::new(address, port))) },
+                (ClaRW::R, Box::new(stcp_server::StcpServer::new(address, port))) 
+            },
             ClaType::Stcp(address, port) => { 
-                (ClaRW::W, Box::new(stcp::Stcp::new(address, port))) },
-            _ => { (ClaRW::RW, Box::new(loopback::LoopbackCLA::new(cla_conf.clone(), self.bus_handle.clone()))) },
+                (ClaRW::W, Box::new(stcp::Stcp::new(address, port))) 
+            },
+            _ => { (ClaRW::RW, Box::new(loopback::LoopbackCLA::new(cla_conf.clone(), self.bus_handle.clone()))) 
+            },
         };
         let mut handle = ClaHandle::new(i, 
                             name.clone(),
@@ -55,6 +56,7 @@ impl ClaManager {
                             rw, 
                             Arc::new(RwLock::new(cla)));
         
+                            
         let h = tokio::task::spawn(async move { handle.start().await; });
         h
     }
@@ -82,7 +84,7 @@ impl ClaManager {
     }
 
     pub async fn start(&mut self) {
-        let mut bus_handle = self.bus_handle.clone();
+        let bus_handle = self.bus_handle.clone();
 
         // Instantiate all the CLAs
         self.start_clas().await;
