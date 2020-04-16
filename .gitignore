@@ -11,4 +11,5 @@ tada.conf
 *.conf
 *.json
 *.gz
+*.yaml
 conf test.json

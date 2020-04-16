@@ -8,61 +8,10 @@ use std::sync::Arc;
 use std::collections::HashMap;
 use msg_bus::{Message};
 use super::RoutingMessage::*;
-use crate::cla::cla_handle::{HandleId};
+use crate::cla::{ClaMessage, HandleId};
 use super::*;
 
 
-pub struct RouteTableEntry {
-    route: Route,
-    kids: Vec<RouteTableEntry>,
-}
-
-impl RouteTableEntry {
-    pub fn add(&mut self, new_route: Route) {
-        let mut new_rte = RouteTableEntry {
-            route: new_route.clone(),
-            kids: Vec::new(),
-        };
-        if self.kids.len() > 0 {
-            let og_kid_len = self.kids.len();
-            for i in 0..self.kids.len() {
-                let j = (og_kid_len - 1) -i;
-                if  new_route.dest.contains(&self.kids[j].route.dest) {
-                    new_rte.kids.push(self.kids.remove(j));
-                }
-                
-            }
-        }
-        // if !self.route.dest.contains(&route.dest) { return };
-        let i = self.kids.iter_mut().filter(|kid| kid.route.dest.contains(&new_route.dest)).next();
-        if let Some(kid) = i {
-            kid.add(new_route);            
-        } else { 
-            self.kids.push(new_rte); 
-        }
-    }
-
-    pub fn lookup(&self, lookup: &NodeRoute) -> Option<HandleId> {
-        match self.find(lookup) {
-            RouteType::ConvLayer(id) => { return Some(id); },
-            _ => { return None },
-        }
-        
-    }
-
-    pub fn find(&self, lookup: &NodeRoute) -> RouteType {
-        let i = self.kids.iter().filter(|kid| kid.route.dest.contains(&lookup)).next();
-        match i {
-            Some(i) => { 
-                let res = i.find(lookup);
-                match res {
-                RouteType::Null => { return i.route.nexthop.clone(); },
-                _ => { return res; },
-            }}
-            None => { return RouteType::Null }
-        }
-    }
-}
 
 pub struct Router {
     bus_handle:     BusHandle,
@@ -70,7 +19,7 @@ pub struct Router {
     router_handle:   Sender<MetaBundle>,
     route_receiver: Arc<Mutex<Receiver<MetaBundle>>>,
     cla_handles:    Arc<RwLock<HashMap<HandleId, Sender<MetaBundle>>>>,
-    route_table:    Arc<RwLock<RouteTableEntry>>,
+    // route_table:    Arc<RwLock<RouteTableEntry>>,
 
 }
 
@@ -80,34 +29,26 @@ impl Router {
         let rx = bus_handle.register(SystemModules::Routing).await.unwrap();
         let (rt_tx, rt_rx) = channel::<MetaBundle>(100);
 
-        let route = Route {
-            dest: NodeRoute::from(""),
-            nexthop: RouteType::Null,
-        };
-
-        let table_entry = RouteTableEntry{
-            route: route,
-            kids: Vec::new(),
-        };
-
+        let table_entry: RouteTableEntry = Default::default();
+        
         Self {
             rx:             Arc::new(Mutex::new(rx)),
             bus_handle,
             router_handle:   rt_tx,
             route_receiver: Arc::new(Mutex::new(rt_rx)),
             cla_handles:    Arc::new(RwLock::new(HashMap::new())),
-            route_table:    Arc::new(RwLock::new(table_entry)),
+            // route_table:    Arc::new(RwLock::new(table_entry)),
         }
     }
 
-    pub async fn start(&mut self) {
+    pub async fn start(&self) {
         let rx = self.rx.clone();
         
 
         let _bus_handle = self.bus_handle.clone();
         let (mut tx_control, rx_control) = channel::<()>(1);
 
-        tokio::task::spawn(Router::route_loop(self.route_receiver.clone(), self.cla_handles.clone(), self.route_table.clone(), rx_control));
+        // tokio::task::spawn(Router::route_loop(self.route_receiver.clone(), self.cla_handles.clone(), rx_control));
 
         info!("Starting route control loop");
         while let Some(msg) = rx.lock().await.recv().await {
@@ -130,10 +71,19 @@ impl Router {
                                 callback.send(ModuleMsgEnum::MsgOk("".to_string())).unwrap();
                             }
                             GetRoutesString => {
-                                let res = self.format_routes().await;
+                                let res = super::ROUTING_TABLE.load().format_routes().await;
                                 callback.send(ModuleMsgEnum::MsgOk(res)).unwrap();
                             }
-                            _ => { debug!("Uknown RPC"); }
+                            _ => { debug!("Uknown RPC {:?}", msg); }
+                        }
+                    }
+                    Message::Message(ModuleMsgEnum::MsgRouting(msg)) => {
+                        match msg {
+                            ForwardBundle(metabun) => {
+                                let s = self.clone();
+                                s.forward_bundle(metabun).await;
+                            }
+                            _ => { debug!("Unknown Message {:?}", msg)},
                         }
                     }
 
@@ -141,8 +91,11 @@ impl Router {
                         match msg {
                             AddRoute(route) => { 
                                 debug!("Adding route {:?}", route);
-                                self.route_table.write().await.add(route); }
-                            _ => {}
+                                let new_table = Arc::new(super::ROUTING_TABLE.load().add(route));
+                                super::ROUTING_TABLE.swap(new_table);
+                                // self.route_table.write().await.add(route); 
+                            },
+                            _ => {},
                         }
                     }
                     _ => { },
@@ -154,71 +107,21 @@ impl Router {
         }; // end While
     }
 
-    async fn route_loop(rx: Arc<Mutex<Receiver<MetaBundle>>>,     
-        cla_handles:    Arc<RwLock<HashMap<HandleId, Sender<MetaBundle>>>>,
-        route_table:    Arc<RwLock<RouteTableEntry>>, 
-        mut rx_control: Receiver<()> ) {
-        let mut rx = rx.lock().await;  // take the lock forever!!
-        info!("Starting routing");
-        loop {
-            let bundle = tokio::select! {
-                Some(b) = rx.recv() => b,
-                _ = rx_control.recv() => {
-                    info!("Received shutdown in routing loop");
-                    break;
-                },
-            };
-            debug!("Received Bundle");
+    async fn forward_bundle(&self, metabun: MetaBundle) {
+        debug!("Received Bundle");
 
-            let cla_id = route_table.read().await.lookup(&bundle.dest);
-            let cla_id = match cla_id {
-                None => { 
-                    debug!("Only Null route found. Dropping");
-                    continue;
-                },
-                Some(cla_id) => { cla_id },
-            };
-            let cla_handles = cla_handles.read().await;
-            let tx = cla_handles.get(&cla_id);
-            let tx = match tx {
-                None => { warn!("CLA not in lookup table.  Dropping Bundle"); continue; },
-                Some(tx) => { tx },
-            };
-            tx.clone().send(bundle).await.unwrap();
-
-
-        
-
-        }
-        debug!("Exited routing loop");
-    }
-
-    // let route = Route {
-    //     dest: NodeRoute::from(""),
-    //     nexthop: RouteType::Null,
-    // };
-
-    // let table_entry = RouteTableEntry{
-    //     route: route,
-    //     kids: Vec::new(),
-    // };
-
-    async fn format_routes(&self) -> String {
-        fn fmt_parent(parent: &RouteTableEntry, out: &mut String, indent:String) {
-            let o = format!( "{}{}   Nexthop:   {}\n", indent, parent.route.dest, parent.route.nexthop);
-            out.push_str(&o);
-            let indent = format!("{}    ", indent);
-            for k in &parent.kids {
-                fmt_parent(&k, &mut *out, indent.clone());
-            };
+        let cla_id = super::ROUTING_TABLE.load().lookup(&metabun.dest);
+        let cla_id = match cla_id {
+            None => { 
+                debug!("Only Null route found. Dropping");  // TODO bounce back to processing for storing
+                return;
+            },
+            Some(cla_id) => { cla_id },
         };
-        
-        let rt = &self.route_table.write().await;
-        let mut out = String::new();
-        let indent = String::new();
-        fmt_parent(&rt, &mut out, indent);
-        // println!("{}", out);
-        out
+        let mut bh = self.bus_handle.clone();
+        bh.send(SystemModules::Cla(cla_id), ModuleMsgEnum::MsgCla(ClaMessage::TransmitBundle(metabun))).await.unwrap();    
+
+       
     }
 
 }
@@ -244,4 +147,8 @@ pub async fn get_routes_string(bus_handle: &mut BusHandle) -> String {
         return routes;
     }
     return "Route printing is unavailable".to_string();
+}
+
+pub async fn forward_bundle(bh: &mut BusHandle, metabun: MetaBundle) {
+    bh.send(SystemModules::Routing, ModuleMsgEnum::MsgRouting(ForwardBundle(metabun))).await.unwrap();
 }
