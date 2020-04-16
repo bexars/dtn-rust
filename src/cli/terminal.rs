@@ -111,6 +111,11 @@ pub(super) fn start(bh: BusHandle) -> io::Result<()> {
                 interface.set_completer(Arc::new(ConfCompleter));
                 mode = Mode::Conf;
             }
+            ("admin-eid", Mode::Conf) => {
+                if let Err(e) = futures::executor::block_on(crate::conf::set_local_eid(&mut bh.clone(),args.to_owned())) {
+                    writeln!(out, "{:?}", e);
+                };
+            }
             ("cla", Mode::Conf) if no_flag => {
                 let (subcmd, mut name) = split_first_word(&args);
                     if name == "" { name = subcmd; }
@@ -314,6 +319,7 @@ static SHOW_COMMANDS: &[(&str, &str)] = &[
 ];
 
 static CONF_COMMANDS: &[(&str, &str)] = &[
+    ("admin-eid",        "EID for administrative responses i.e. hostname"),
     ("cla",              "<name> CL adapter configuration"),
     ("help",             "You're looking at it"),
     ("list-commands",    "List command names"),

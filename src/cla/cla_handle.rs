@@ -2,13 +2,14 @@ use log::*;
 use std::sync::{Arc};
 use super::ClaRW;
 use super::{ClaTrait, ClaBundleStatus};
-use crate::system::{ SystemModules};
+use crate::system::{ SystemModules, BusHandle };
 use crate::routing::*;
 use tokio::sync::mpsc::{Sender,Receiver};
 use tokio::sync::RwLock;
 use msg_bus::{Message, MsgBusHandle};
 use crate::bus::ModuleMsgEnum;
 use super::AdapterConfiguration;
+use super::ClaMessage::*;
 
 
 pub struct ClaHandle {
@@ -32,8 +33,9 @@ pub type HandleId = String;
 impl ClaHandle {
     pub fn new(  
             id: HandleId,
-            bus_handle: MsgBusHandle<SystemModules, ModuleMsgEnum>, 
-            cla_config: AdapterConfiguration, cla_rw: ClaRW, cla: Arc<RwLock<Box<dyn ClaTrait>>>
+            bus_handle: BusHandle, 
+            cla_config: AdapterConfiguration, 
+            cla_rw: ClaRW, cla: Arc<RwLock<Box<dyn ClaTrait>>>,
         ) -> ClaHandle 
         {
         debug!("Inside ClaHandle new");
@@ -75,10 +77,10 @@ impl ClaHandle {
 
     pub async fn start(&mut self) {
 
-        let mut system_handle = self.bus_handle.clone().register(SystemModules::Cla(self.id.clone())).await.unwrap();
+        let mut bus_rx = self.bus_handle.clone().register(SystemModules::Cla(self.id.clone())).await.unwrap();
 
-        let routing_handle = crate::routing::router::add_cla_handle(&mut self.bus_handle.clone(), self.id.clone(), self.tx.clone()).await;
-        self.router_handle = Some(routing_handle.clone());        
+        // let routing_handle = crate::routing::router::add_cla_handle(&mut self.bus_handle.clone(), self.id.clone(), self.tx.clone()).await;
+        // self.router_handle = Some(routing_handle.clone());        
 
         let (cla_tx, mut cla_rx) = tokio::sync::mpsc::channel::<ClaBundleStatus>(50);
         if !self.cla_config.shutdown { self.start_cla(cla_tx.clone()).await; };
@@ -87,12 +89,20 @@ impl ClaHandle {
         let mut rx = rx.write().await;
         loop {
             let _ = tokio::select! {
-                Some(msg) = system_handle.recv() => {
+                Some(msg) = bus_rx.recv() => {
                     match msg {
                         Message::Shutdown => {
                             self.cla.write().await.stop();
                             break;
                         },
+                        Message::Message(ModuleMsgEnum::MsgCla(msg)) => {
+                            match msg {
+                                TransmitBundle(metabun) => {
+                                    self.cla.write().await.send(metabun);
+                                }
+                                _ => { debug!("Unknown msg {:?}", msg); }
+                            }
+                        }
                         _ => {},
                     }
                 }
@@ -103,7 +113,7 @@ impl ClaHandle {
                     match rcvd_bundle {
                         ClaBundleStatus::New(_,_) => {
                             debug!("Received Bundle");
-                            self.process_bundle(rcvd_bundle, routing_handle.clone());
+                            self.process_bundle(rcvd_bundle, self.bus_handle.clone());
 
                         }
                         _ => {},  // TODO Implement Failure, Success
@@ -115,7 +125,7 @@ impl ClaHandle {
         }
     }
 
-    fn process_bundle<'a>(&mut  self, bundle: ClaBundleStatus, routing_handle: Sender<MetaBundle>)  {
+    fn process_bundle<'a>(&mut  self, bundle: ClaBundleStatus, bus_handle: BusHandle)  {
         
         let (bundle, size) = match bundle {
             ClaBundleStatus::New(bundle, size) => { (bundle, size) },
@@ -131,8 +141,7 @@ impl ClaHandle {
             status: MetaBundleStatus::New( self.id.clone()),
         };
 
-        let mut routing_handle = routing_handle.clone();
-        tokio::task::spawn(async move { routing_handle.send(metabun).await });
+        tokio::task::spawn(crate::processor::process_bundle(bus_handle.clone(), metabun));
 
     }
 

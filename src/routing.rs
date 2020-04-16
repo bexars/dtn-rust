@@ -1,8 +1,21 @@
 use crate::cla::cla_handle::HandleId;
 use tokio::sync::mpsc::*;
+use tokio::sync::RwLock;
 use std::fmt;
+use std::sync::Arc;
+pub use self::route_table::RouteTableEntry as RouteTableEntry;
+use arc_swap;
+use arc_swap::ArcSwap;
+use lazy_static::*;
+
+lazy_static! {
+pub static ref ROUTING_TABLE: ArcSwap<RouteTableEntry> = {
+        ArcSwap::from(Arc::new(RouteTableEntry::default()))
+    };
+}
 
 pub mod router;
+mod route_table;
 
 #[derive(Debug, Clone)]
 pub enum RoutingMessage {
@@ -11,6 +24,8 @@ pub enum RoutingMessage {
     AddClaHandle(HandleId, Sender<MetaBundle>),
     DropClaHandle(HandleId),
     DataRouterHandle(Sender<MetaBundle>),
+    DataRouteTable(Arc<RwLock<RouteTableEntry>>),
+    ForwardBundle(MetaBundle),
     GetRoutesString,
 }
 
@@ -54,6 +69,15 @@ impl fmt::Display for RouteType {
 pub struct Route {
     pub dest: NodeRoute,
     pub nexthop: RouteType,
+}
+
+impl Default for Route {
+    fn default() -> Route {
+        Route {
+            dest: NodeRoute::from(""),
+            nexthop: RouteType::Null,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]

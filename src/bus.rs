@@ -1,7 +1,8 @@
 #[derive(Debug, Clone)]
 pub enum ModuleMsgEnum {
-    MsgProcessing,   
+    MsgProcessing(crate::processor::ProcessorMsg),   
     MsgClaManager,   
+    MsgCla(crate::cla::ClaMessage),
     MsgCLI,          
     MsgLogging,      
     MsgStorage,      

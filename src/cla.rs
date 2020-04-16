@@ -14,6 +14,12 @@ pub mod loopback;
 
 
 #[derive(Clone, Debug, PartialEq)]
+pub enum ClaMessage {
+    TransmitBundle(MetaBundle),
+}
+
+
+#[derive(Clone, Debug, PartialEq)]
 pub enum ClaBundleStatus {
     Failure(MetaBundle),
     Success(MetaBundle),

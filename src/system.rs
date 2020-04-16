@@ -11,6 +11,7 @@ use strum_macros::*;
 use msg_bus::{MsgBus, MsgBusHandle};
 use msg_bus::Message::*;    
 use std::path::PathBuf;
+use std::sync::Arc;
 
 
 // use std::path::PathBuf;
@@ -60,14 +61,14 @@ pub async fn start(conf_file: String) {
 
     let mut conf_mgr = conf::ConfManager::new(PathBuf::from(conf_file), bus_handle.clone()).await;
     // Storage here
-    let mut proc_mgr = processor::Processor::new(bus_handle.clone()).await;
+    let proc_mgr = Arc::new(processor::Processor::new(bus_handle.clone()).await);
     let mut cla_mgr = ClaManager::new(bus_handle.clone()).await;
     let cli_mgr = cli::CliManager::new(bus_handle.clone()).await;
-    let mut router = routing::router::Router::new(bus_handle.clone()).await;
+    let router = Arc::new(routing::router::Router::new(bus_handle.clone()).await);
 
     let han_conf = task::spawn(async move { conf_mgr.start().await; });
-    let han_rout = task::spawn(async move { router.start().await; });
-    let han_proc = task::spawn(async move { proc_mgr.start().await; });
+    let han_rout = task::spawn(async move { router.clone().start().await; });
+    let han_proc = task::spawn(async move { proc_mgr.clone().start().await });
     let _han_clim = task::spawn(async move { cli_mgr.start().await; });
     let han_clam = task::spawn(async move { cla_mgr.start().await; });
 
