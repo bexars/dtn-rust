@@ -7,11 +7,13 @@ use crate::cla::cla_manager::ClaManager;
 use crate::cla::HandleId;
 use crate::processor;
 use crate::routing;
+use crate::agent;
 use strum_macros::*;
 use msg_bus::{MsgBus, MsgBusHandle};
 use msg_bus::Message::*;    
 use std::path::PathBuf;
 use std::sync::Arc;
+
 
 
 // use std::path::PathBuf;
@@ -39,6 +41,7 @@ pub enum SystemModules {
     Logging,         // Catches and distributes all logging
     Storage,         // Bundles being written to disk
     AppAgent,        // Registering clients, send/receive bundles
+    AgentClient(agent::AgentId),  // Represents the actual connected application client of the Agent 
     Routing,         // Updates and lookups to the forwarding table
     Configuration,   // Reads, stores, updates the config.  Let's other modules know
     Bus,             // The messaging backbone
@@ -65,12 +68,14 @@ pub async fn start(conf_file: String) {
     let mut cla_mgr = ClaManager::new(bus_handle.clone()).await;
     let cli_mgr = cli::CliManager::new(bus_handle.clone()).await;
     let router = Arc::new(routing::router::Router::new(bus_handle.clone()).await);
+    let agent = agent::Agent::new(bus_handle.clone()).await;
 
     let han_conf = task::spawn(async move { conf_mgr.start().await; });
     let han_rout = task::spawn(async move { router.clone().start().await; });
     let han_proc = task::spawn(async move { proc_mgr.clone().start().await });
     let _han_clim = task::spawn(async move { cli_mgr.start().await; });
     let han_clam = task::spawn(async move { cla_mgr.start().await; });
+    let han_agent = task::spawn(async move { agent.start().await; });
 
     //    let mut processor = Processor::new();        
 //    task::spawn_blocking(|| {cli::start()});
@@ -101,7 +106,7 @@ pub async fn start(conf_file: String) {
     }
     info!("Waiting on threads to exit");
     #[allow(unused_must_use)] {
-         tokio::join!(han_conf, han_proc, han_clam, han_rout);
+         tokio::join!(han_conf, han_proc, han_clam, han_rout, han_agent);
     }
     info!("System Halted");
 }

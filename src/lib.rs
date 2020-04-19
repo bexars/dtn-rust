@@ -9,4 +9,6 @@ pub mod bus;
 pub mod conf;
 pub mod system;
 pub mod processor;
+pub mod user;
+pub mod agent;
 
