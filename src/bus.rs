@@ -7,7 +7,8 @@ pub enum ModuleMsgEnum {
     MsgLogging,      
     MsgStorage,
     MsgUserMgr(crate::user::UserMgrMessage),      
-    MsgAppAgent(crate::agent::AgentMessage),     
+    MsgAppAgent(crate::agent::AgentMessage),
+    MsgAgentClient(crate::agent::AgentClientMessage),  
     MsgRouting(crate::routing::RoutingMessage),  // not for actual bundles      
     MsgConf(crate::conf::ConfMessage),
     MsgSystem(crate::system::SystemMessage),

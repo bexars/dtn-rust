@@ -89,7 +89,7 @@ impl ClaHandle {
         let mut rx = rx.write().await;
         loop {
             let _ = tokio::select! {
-                Some(msg) = bus_rx.recv() => {
+                Some(msg) = bus_rx.recv() => {  //received a message from the msg_bus
                     match msg {
                         Message::Shutdown => {
                             self.cla.write().await.stop();

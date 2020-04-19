@@ -8,17 +8,13 @@ use crate::cla::HandleId;
 use crate::processor;
 use crate::routing;
 use crate::agent;
+use crate::user;
 use strum_macros::*;
 use msg_bus::{MsgBus, MsgBusHandle};
 use msg_bus::Message::*;    
 use std::path::PathBuf;
 use std::sync::Arc;
 
-
-
-// use std::path::PathBuf;
-
-// pub mod processor;
 
 pub type BusHandle = MsgBusHandle<SystemModules, ModuleMsgEnum>;
 
@@ -42,6 +38,7 @@ pub enum SystemModules {
     Storage,         // Bundles being written to disk
     AppAgent,        // Registering clients, send/receive bundles
     AgentClient(agent::AgentId),  // Represents the actual connected application client of the Agent 
+    UserMgr,         // All things to do with add/remove/verify users
     Routing,         // Updates and lookups to the forwarding table
     Configuration,   // Reads, stores, updates the config.  Let's other modules know
     Bus,             // The messaging backbone
@@ -69,6 +66,8 @@ pub async fn start(conf_file: String) {
     let cli_mgr = cli::CliManager::new(bus_handle.clone()).await;
     let router = Arc::new(routing::router::Router::new(bus_handle.clone()).await);
     let agent = agent::Agent::new(bus_handle.clone()).await;
+    let user_mgr = user::UserMgr::new(bus_handle.clone()).await;
+
 
     let han_conf = task::spawn(async move { conf_mgr.start().await; });
     let han_rout = task::spawn(async move { router.clone().start().await; });
@@ -76,6 +75,7 @@ pub async fn start(conf_file: String) {
     let _han_clim = task::spawn(async move { cli_mgr.start().await; });
     let han_clam = task::spawn(async move { cla_mgr.start().await; });
     let han_agent = task::spawn(async move { agent.start().await; });
+    let han_user = task::spawn(async move { user_mgr.start().await; });
 
     //    let mut processor = Processor::new();        
 //    task::spawn_blocking(|| {cli::start()});
@@ -106,7 +106,7 @@ pub async fn start(conf_file: String) {
     }
     info!("Waiting on threads to exit");
     #[allow(unused_must_use)] {
-         tokio::join!(han_conf, han_proc, han_clam, han_rout, han_agent);
+         tokio::join!(han_conf, han_proc, han_clam, han_rout, han_agent, han_user);
     }
     info!("System Halted");
 }

@@ -11,6 +11,7 @@ use std::sync::Arc;
 use tokio::sync::{ RwLock, Mutex };
 use tokio::net::{TcpStream, TcpListener};
 use super::agent_state::AgentClient;
+use super::AgentId;
 
 
 
@@ -38,8 +39,9 @@ impl AgentService {
         let mut bus_handle = self.bus_handle.clone();
         let mut listener = TcpListener::bind("0.0.0.0:45560").await.unwrap(); //TODO be graceful about this failure
         let mut incoming = listener.incoming();
-
+        let mut connection_count: AgentId = 0;
         loop {
+
             tokio::select! {
                 Some(_) = stop_rx.recv() => {
                     debug!("Stopping.");
@@ -49,7 +51,8 @@ impl AgentService {
                     match conn {
                         Err(e) => eprintln!("agent_service accept failed: {:?}", e),
                         Ok(sock) => {
-                            tokio::spawn(Self::run_client(self.clone(), sock));
+                            connection_count += 1;
+                            tokio::spawn(Self::run_client(self.clone(), sock, connection_count));
                         },
                     };
                 },
@@ -59,7 +62,7 @@ impl AgentService {
 
     }
 
-    async fn run_client(self, sock: TcpStream) {
-        AgentClient::start(sock).await;
+    async fn run_client(self, sock: TcpStream, id: AgentId) {
+        AgentClient::start(sock, self.bus_handle.clone(), id).await;
     }
 }
