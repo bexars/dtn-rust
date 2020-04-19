@@ -13,3 +13,4 @@ tada.conf
 *.gz
 *.yaml
 conf test.json
+libsodium-1.0.18-stable-msvc.zip
