@@ -105,6 +105,7 @@ impl UserMgr {
                             resp.send(ModuleMsgEnum::MsgUserMgr(UserMgrMessage::DataUserAdded{login: u.login})).unwrap();
                         },
                         UserMgrMessage::VerifyLogin{ login, password, challenge } => { 
+                            let _ = challenge;
                             let users = self.users.read().await;
                             let user = users.find(&login);
                             let user = if let Some(user) = user { user } else { 
