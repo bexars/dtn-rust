@@ -113,7 +113,7 @@ pub(super) fn start(bh: BusHandle) -> io::Result<()> {
             }
             ("admin-eid", Mode::Conf) => {
                 if let Err(e) = futures::executor::block_on(crate::conf::set_local_eid(&mut bh.clone(),args.to_owned())) {
-                    writeln!(out, "{:?}", e);
+                    writeln!(out, "{:?}", e)?;
                 };
             }
             ("cla", Mode::Conf) if no_flag => {

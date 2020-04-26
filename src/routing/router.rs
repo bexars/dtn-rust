@@ -16,8 +16,8 @@ use super::*;
 pub struct Router {
     bus_handle:     BusHandle,
     rx:             Arc<Mutex<Receiver<Message<ModuleMsgEnum>>>>,
-    router_handle:   Sender<MetaBundle>,
-    route_receiver: Arc<Mutex<Receiver<MetaBundle>>>,
+    // router_handle:   Sender<MetaBundle>,
+    // route_receiver: Arc<Mutex<Receiver<MetaBundle>>>,
     cla_handles:    Arc<RwLock<HashMap<HandleId, Sender<MetaBundle>>>>,
     // route_table:    Arc<RwLock<RouteTableEntry>>,
 
@@ -27,15 +27,15 @@ impl Router {
 
     pub async fn new(mut bus_handle: BusHandle) -> Self  {
         let rx = bus_handle.register(SystemModules::Routing).await.unwrap();
-        let (rt_tx, rt_rx) = channel::<MetaBundle>(100);
+        // let (rt_tx, rt_rx) = channel::<MetaBundle>(100);
 
-        let table_entry: RouteTableEntry = Default::default();
+        // let table_entry: RouteTableEntry = Default::default();
         
         Self {
             rx:             Arc::new(Mutex::new(rx)),
             bus_handle,
-            router_handle:   rt_tx,
-            route_receiver: Arc::new(Mutex::new(rt_rx)),
+            // router_handle:   rt_tx,
+            // route_receiver: Arc::new(Mutex::new(rt_rx)),
             cla_handles:    Arc::new(RwLock::new(HashMap::new())),
             // route_table:    Arc::new(RwLock::new(table_entry)),
         }
@@ -46,7 +46,7 @@ impl Router {
         
 
         let _bus_handle = self.bus_handle.clone();
-        let (mut tx_control, rx_control) = channel::<()>(1);
+        // let (mut tx_control, rx_control) = channel::<()>(1);
 
         // tokio::task::spawn(Router::route_loop(self.route_receiver.clone(), self.cla_handles.clone(), rx_control));
 
@@ -55,17 +55,17 @@ impl Router {
                 // Listen for updates from CLAs
                 match msg {
                     Message::Shutdown => { 
-                        info!("Shutting down route control");
-                        tx_control.send(()).await.unwrap();
+                        info!("Shutting down router");
+                        // tx_control.send(()).await.unwrap();
                         break; 
                     },
 
                     Message::Rpc(ModuleMsgEnum::MsgRouting(msg), callback) => {
                         match msg {
-                            AddClaHandle(handle_id, sender) => {
-                                self.cla_handles.write().await.insert(handle_id, sender);
-                                callback.send(ModuleMsgEnum::MsgRouting(DataRouterHandle(self.router_handle.clone()))).unwrap();
-                            }
+                            // AddClaHandle(handle_id, sender) => {
+                            //     self.cla_handles.write().await.insert(handle_id, sender);
+                            //     callback.send(ModuleMsgEnum::MsgRouting(DataRouterHandle(self.router_handle.clone()))).unwrap();
+                            // }
                             DropClaHandle(handle_id) => {
                                 self.cla_handles.write().await.remove(&handle_id);
                                 callback.send(ModuleMsgEnum::MsgOk("".to_string())).unwrap();
@@ -129,13 +129,13 @@ impl Router {
 
 ///////////////  Helper functions /////////////////////////
 //
-pub async fn add_cla_handle(bus_handle: &mut BusHandle, handle_id: HandleId, cla_sender: Sender<MetaBundle>) -> Sender<MetaBundle> {
-    let res = bus_handle.rpc(SystemModules::Routing, ModuleMsgEnum::MsgRouting(AddClaHandle(handle_id, cla_sender))).await.unwrap();
-    if let ModuleMsgEnum::MsgRouting(DataRouterHandle(router_handle)) = res {
-        return router_handle;
-    } else { panic!("Not a router_handle from messaging"); }
+// pub async fn add_cla_handle(bus_handle: &mut BusHandle, handle_id: HandleId, cla_sender: Sender<MetaBundle>) -> Sender<MetaBundle> {
+//     let res = bus_handle.rpc(SystemModules::Routing, ModuleMsgEnum::MsgRouting(AddClaHandle(handle_id, cla_sender))).await.unwrap();
+//     if let ModuleMsgEnum::MsgRouting(DataRouterHandle(router_handle)) = res {
+//         return router_handle;
+//     } else { panic!("Not a router_handle from messaging"); }
 
-}
+// }
 
 pub async fn add_route(bus_handle: &mut BusHandle, route: Route) {
     bus_handle.broadcast(ModuleMsgEnum::MsgRouting(AddRoute(route))).await.unwrap();

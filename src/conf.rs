@@ -3,7 +3,7 @@ use fondant::Configure;
 use serde::{Serialize, Deserialize};
 use bp7::EndpointID;
 use tokio::sync::mpsc::*;
-use tokio::sync::{RwLock, Mutex};
+use tokio::sync::{Mutex};
 use std::sync::Arc;
 use crate::system::SystemModules;
 use msgbus::{MsgBusHandle, Message};
@@ -136,7 +136,7 @@ impl ConfManager {
                         ConfMessage::SetLocalEid(localeid) => {
                             let mut conf = CONFIGURATION.load().deref().deref().clone();
                             match EndpointID::with_dtn(&localeid) {
-                                Err(e) => { rcpt.send(ModuleMsgEnum::MsgErr(format!("{:?}", e))); },
+                                Err(e) => { rcpt.send(ModuleMsgEnum::MsgErr(format!("{:?}", e))).unwrap(); },
                                 Ok(res) => {
                                     conf.local_eid = res;
                                     CONFIGURATION.swap(Arc::new(conf));

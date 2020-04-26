@@ -40,7 +40,7 @@ impl Processor {
 
     pub async fn start(&self) {
         let rx = self.rx.clone();
-        let mut bus_handle = self.bus_handle.clone();
+        let _bus_handle = self.bus_handle.clone();
         // let conf = crate::conf::get_conf_struct(&mut bus_handle).await.unwrap();
 
 
@@ -55,7 +55,7 @@ impl Processor {
                                 tokio::task::spawn(async move { s.process_inbound(metabun).await });
                             }
 
-                            _ => { debug!("Unhandled message: {:?}", proc_msg) },
+                            // _ => { debug!("Unhandled message: {:?}", proc_msg) },
                         }
                     },
                     _ => {},
@@ -81,7 +81,7 @@ impl Processor {
 
         
         if  None == metabun.bundle.extension_block_by_type(bp7::HOP_COUNT_BLOCK) {
-            let mut hop_block = bp7::new_hop_count_block(1, 0, 64);
+            let hop_block = bp7::new_hop_count_block(1, 0, 64);
             metabun.bundle.add_canonical_block(hop_block);
         }
 

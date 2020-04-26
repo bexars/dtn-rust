@@ -21,7 +21,7 @@ mod route_table;
 pub enum RoutingMessage {
     AddRoute(Route),
     DropRoute(Route),
-    AddClaHandle(HandleId, Sender<MetaBundle>),
+    // AddClaHandle(HandleId, Sender<MetaBundle>),
     DropClaHandle(HandleId),
     DataRouterHandle(Sender<MetaBundle>),
     DataRouteTable(Arc<RwLock<RouteTableEntry>>),

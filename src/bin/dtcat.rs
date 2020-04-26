@@ -12,7 +12,6 @@ use bp7::eid::EndpointID;
 use dtn::stcp;
 use std::net::TcpStream;
 use std::io::{ BufReader, BufWriter };
-use bp7::ByteBuffer;
 
 #[derive(Debug)]
 #[derive(Clap)]
@@ -96,13 +95,13 @@ fn recv_bundle(opts: &Opts) {
     let user = &opts.user.clone().unwrap_or(String::from("anonymous"));
     let pass = &opts.secret;
 
-    let mut stream = TcpStream::connect(host_port).unwrap();
+    let stream = TcpStream::connect(host_port).unwrap();
     let mut reader = BufReader::new(&stream);
     let mut writer = BufWriter::new(&stream);
     let lines = &mut reader.by_ref().lines();
     if let None = pass {
-        write!(writer, "login anonymous\n");
-        writer.flush();
+        write!(writer, "login anonymous\n").unwrap();
+        writer.flush().unwrap();
             while let Some(line) = lines.next() {
             let line = line.unwrap();
             if line.contains("LOGIN") {
@@ -114,27 +113,27 @@ fn recv_bundle(opts: &Opts) {
             
         }
     } else {
-        write!(writer, "login {}\npassword {}\n", user, pass.clone().unwrap());
-        writer.flush();
+        write!(writer, "login {}\npassword {}\n", user, pass.clone().unwrap()).unwrap();
+        writer.flush().unwrap();
     }
     
         //let lines = &mut reader.by_ref().lines();
         while !lines.next().unwrap().unwrap().contains("SUCCESS") {};
         println!("Password success");
     
-    writeln!(writer,"register {}", &opts.listen.as_ref().unwrap());
-    writer.flush();
+    writeln!(writer,"register {}", &opts.listen.as_ref().unwrap()).unwrap();
+    writer.flush().unwrap();
     let result = lines.next().unwrap().unwrap();
     if result.contains("ERR") { println!("{}", result);
         return;
     } 
     let mut buf = String::new();
-    reader.read_line(&mut buf);
+    reader.read_line(&mut buf).unwrap();
     println!("Attempting to read bundle {}", buf);
     let bun_size = buf.split_whitespace().nth(1).unwrap().parse().unwrap();
     println!("Incoming bundle of {} bytes", bun_size);
     let mut buffer = vec![0; bun_size];
-    reader.read_exact(&mut buffer);
+    reader.read_exact(&mut buffer).unwrap();
     let bundle = Bundle::try_from(buffer).unwrap();
     println!("{}", std::str::from_utf8(bundle.payload().unwrap()).unwrap());
 }

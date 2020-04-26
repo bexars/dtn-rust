@@ -53,7 +53,7 @@ pub async fn start(conf_file: String) {
     //conf.store_file(&conf_file).unwrap();
     //println!("{}", toml::to_string_pretty(&conf).unwrap());
 
-    let (bus, bus_handle) = MsgBus::<SystemModules, ModuleMsgEnum>::new();
+    let (mut bus, bus_handle) = MsgBus::<SystemModules, ModuleMsgEnum>::new();
 
     let mut rx = bus_handle.clone().register(SystemModules::System).await.unwrap();
     // let (mut msg_bus_old, bus_tx, bus_rx) = bus::Bus::new();
@@ -98,7 +98,7 @@ pub async fn start(conf_file: String) {
             Message(ModuleMsgEnum::MsgSystem(SystemMessage::ShutdownRequested)) => {
                 debug!("Received shutdown request");
                 // bus_handle.broadcast(ModuleMsgEnum::ShutdownNow).await;
-                bus.clone().shutdown().await; 
+                bus.shutdown().await.unwrap(); 
                 
             },
             _ => {},
