@@ -1,8 +1,0 @@
-[[]]
-name = "dtcat"
-path = "src/bin/dtcat.rs"
-
-[[]]
-name = "dtrouter"
-path = "src/bin/dtrouter.rs"
-, "dtplay"
