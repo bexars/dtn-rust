@@ -4,7 +4,7 @@ use super::ClaRW;
 use super::{ClaTrait, ClaBundleStatus};
 use crate::system::{ SystemModules, BusHandle };
 use crate::routing::*;
-use tokio::sync::mpsc::{Sender,Receiver};
+use tokio::sync::mpsc::{Sender};
 use tokio::sync::RwLock;
 use msgbus::{Message, MsgBusHandle};
 use crate::bus::ModuleMsgEnum;
@@ -20,9 +20,8 @@ pub struct ClaHandle {
     pub in_bundles: usize,
     pub out_bundles: usize,
     bus_handle: MsgBusHandle<SystemModules, ModuleMsgEnum>,
-    router_handle: Option<Sender<MetaBundle>>,
-    tx: Sender<MetaBundle>,
-    rx: Arc<RwLock<Receiver<MetaBundle>>>,
+    // tx: Sender<MetaBundle>,
+    // rx: Arc<RwLock<Receiver<MetaBundle>>>,
     cla_config: AdapterConfiguration,
     cla: Arc<RwLock<Box<dyn ClaTrait>>>,
 }
@@ -39,18 +38,18 @@ impl ClaHandle {
         ) -> ClaHandle 
         {
         debug!("Inside ClaHandle new");
-        let (tx, rx) = tokio::sync::mpsc::channel(50);
+        // let (tx, rx) = tokio::sync::mpsc::channel(50);
         Self {
             id,
             bus_handle,
             rw: cla_rw,
-            router_handle: None,
+            // router_handle: None,
             in_bundles: 0,
             in_bytes: 0,
             out_bundles: 0,
             out_bytes: 0,
-            tx,
-            rx: Arc::new(RwLock::new(rx)),
+            // tx,
+            // rx: Arc::new(RwLock::new(rx)),
             cla_config,
             cla,
         }
@@ -85,8 +84,8 @@ impl ClaHandle {
         let (cla_tx, mut cla_rx) = tokio::sync::mpsc::channel::<ClaBundleStatus>(50);
         if !self.cla_config.shutdown { self.start_cla(cla_tx.clone()).await; };
         
-        let rx = &mut self.rx.clone();
-        let mut rx = rx.write().await;
+        // let rx = &mut self.rx.clone();
+        // let mut rx = rx.write().await;
         loop {
             let _ = tokio::select! {
                 Some(msg) = bus_rx.recv() => {  //received a message from the msg_bus
@@ -100,15 +99,15 @@ impl ClaHandle {
                                 TransmitBundle(metabun) => {
                                     self.cla.write().await.send(metabun);
                                 }
-                                _ => { debug!("Unknown msg {:?}", msg); }
+                                // _ => { debug!("Unknown msg {:?}", msg); }
                             }
                         }
                         _ => {},
                     }
                 }
-                Some(router_bun) = rx.recv() => { // Received bundle from Router 
-                    self.cla.write().await.send(router_bun);
-                },
+                // Some(router_bun) = rx.recv() => { // Received bundle from Router 
+                //     self.cla.write().await.send(router_bun);
+                // },
                 Some(rcvd_bundle) = cla_rx.recv() => { // Received bundle from CLA
                     match rcvd_bundle {
                         ClaBundleStatus::New(_,_) => {
