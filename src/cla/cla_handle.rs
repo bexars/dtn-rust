@@ -6,7 +6,7 @@ use crate::system::{ SystemModules, BusHandle };
 use crate::routing::*;
 use tokio::sync::mpsc::{Sender,Receiver};
 use tokio::sync::RwLock;
-use msg_bus::{Message, MsgBusHandle};
+use msgbus::{Message, MsgBusHandle};
 use crate::bus::ModuleMsgEnum;
 use super::AdapterConfiguration;
 use super::ClaMessage::*;

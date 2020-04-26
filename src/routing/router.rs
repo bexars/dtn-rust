@@ -6,7 +6,7 @@ use tokio::sync::mpsc::*;
 use tokio::sync::{RwLock, Mutex};
 use std::sync::Arc;
 use std::collections::HashMap;
-use msg_bus::{Message};
+use msgbus::{Message};
 use super::RoutingMessage::*;
 use crate::cla::{ClaMessage, HandleId};
 use super::*;

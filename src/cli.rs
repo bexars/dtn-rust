@@ -1,7 +1,7 @@
 use log::*;
 use crate::bus::ModuleMsgEnum;
 use crate::system::SystemModules;
-use msg_bus::{MsgBusHandle, Message};
+use msgbus::{MsgBusHandle, Message};
 use serde::{Serialize, Deserialize};
 use tokio::sync::mpsc::Receiver;
 use tokio::sync::{Mutex};

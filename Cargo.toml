@@ -12,6 +12,7 @@ serde_cbor = "0.11.1"
 serde_derive = "1.0.105"
 serde = "1.0.105"
 crc = "1.8.1"
+#  clap = "2.33.0"
 clap = { git = "https://github.com/clap-rs/clap/" }
 tokio = { version = "0.2.16", features = ["full"] }
 futures = "0.3"
@@ -26,7 +27,7 @@ strum = "0.18.0"
 strum_macros = "0.18.0"
 log = "0.4.8"
 env_logger = "0.7.1"
-msg_bus = { git = "https://github.com/bexars/msg_bus.git" }
+msgbus = { git = "https://github.com/bexars/msg_bus.git" }
 linefeed = "0.6.0"
 # linefeed = { git = "https://github.com/bexars/linefeed.git" }
 rand = "0.7.3"

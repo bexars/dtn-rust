@@ -2,7 +2,7 @@ use log::*;
 use crate::system::{ SystemModules, BusHandle };
 use std::sync::Arc;
 use tokio::sync::{RwLock, Mutex};
-use msg_bus::{ Message};
+use msgbus::{ Message};
 use crate::bus::ModuleMsgEnum;
 use std::collections::HashMap;
 use std::time::{Duration, SystemTime};

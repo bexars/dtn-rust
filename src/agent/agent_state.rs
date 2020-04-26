@@ -1,4 +1,3 @@
-use msg_bus::Message;
 use log::*;
 use tokio::net::TcpStream;
 use tokio::io::{AsyncWriteExt, AsyncBufReadExt, BufStream};
@@ -10,7 +9,7 @@ use std::io::{ Error, ErrorKind };
 use rand::{thread_rng, Rng};
 use rand::distributions::Alphanumeric;
 use crate::system::{ BusHandle, SystemModules };
-use msg_bus::{ MsgBusHandle};
+use msgbus::{Message, MsgBusHandle};
 use crate::bus::ModuleMsgEnum;
 use super::{ AgentId, AgentClientMessage };
 // use crate::routing::MetaBundle;

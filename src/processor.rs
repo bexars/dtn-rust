@@ -6,7 +6,7 @@ use crate::system::{ SystemModules, BusHandle };
 use tokio::sync::mpsc::*;
 use tokio::sync::{Mutex, RwLock};
 use std::sync::{Arc};
-use msg_bus::{MsgBusHandle, Message};
+use msgbus::{MsgBusHandle, Message};
 use crate::routing::{ MetaBundle, MetaBundleStatus, RouteTableEntry };
 use crate::conf::Configuration;
 

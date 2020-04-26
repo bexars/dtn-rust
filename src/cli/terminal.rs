@@ -12,7 +12,7 @@ use linefeed::command::COMMANDS;
 use linefeed::complete::{Completer, Completion};
 // use linefeed::inputrc::parse_text;
 use linefeed::terminal::Terminal;
-use msg_bus::*;
+use msgbus::*;
 use crate::system::SystemModules;
 use crate::bus::ModuleMsgEnum;
 use crate::cla::{AdapterConfiguration, ClaType};

@@ -8,7 +8,7 @@ use crate::system::SystemModules;
 use tokio::sync::mpsc::*;
 use tokio::sync::{RwLock, Mutex};
 use std::sync::Arc;
-use msg_bus::{MsgBusHandle, Message};
+use msgbus::{MsgBusHandle, Message};
 
 
 

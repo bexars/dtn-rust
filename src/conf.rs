@@ -6,7 +6,7 @@ use tokio::sync::mpsc::*;
 use tokio::sync::{RwLock, Mutex};
 use std::sync::Arc;
 use crate::system::SystemModules;
-use msg_bus::{MsgBusHandle, Message};
+use msgbus::{MsgBusHandle, Message};
 use crate::bus::ModuleMsgEnum;
 use crate::cla::{ClaConfiguration, AdapterConfiguration};
 use crate::cli::CliConfiguration;

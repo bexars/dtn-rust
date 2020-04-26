@@ -10,8 +10,8 @@ use crate::routing;
 use crate::agent;
 use crate::user;
 use strum_macros::*;
-use msg_bus::{MsgBus, MsgBusHandle};
-use msg_bus::Message::*;    
+use msgbus::{MsgBus, MsgBusHandle};
+use msgbus::Message::*;    
 use std::path::PathBuf;
 use std::sync::Arc;
 

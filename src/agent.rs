@@ -8,7 +8,7 @@ use crate::routing::MetaBundle;
 use crate::system::{ SystemModules, BusHandle };
 use std::sync::Arc;
 use tokio::sync::{ Mutex, RwLock };
-use msg_bus::{MsgBusHandle, Message};
+use msgbus::{MsgBusHandle, Message};
 use crate::bus::ModuleMsgEnum;
 use std::time::{Duration, SystemTime};
 

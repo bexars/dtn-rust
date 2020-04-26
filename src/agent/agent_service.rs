@@ -1,7 +1,7 @@
 use log::*;
 use crate::bus::ModuleMsgEnum;
 use crate::system::{ SystemModules, BusHandle };
-use msg_bus::{Message};
+use msgbus::{Message};
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::io::BufReader;
 use tokio::prelude::*;
